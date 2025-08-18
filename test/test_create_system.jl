@@ -1,0 +1,11 @@
+using Test
+using SiennaNEM
+
+@testset "Create System Tests" begin
+    data_dir = "data/nem12"
+    data = read_data_csv(data_dir)
+    create_system!(data)
+
+    @test haskey(data, "sys")
+    @test typeof(data["sys"]) == PowerSystems.System
+end
