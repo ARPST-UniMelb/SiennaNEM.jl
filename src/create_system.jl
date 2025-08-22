@@ -109,14 +109,6 @@ function create_system!(data)
     #   Add time series
     #   No reactive capability data > same as capacity for now
 
-    # add new column based on mapping
-    transform!(df_generator, :tech => ByRow(t -> tech_to_datatype[t]) => :DataType)
-    transform!(df_generator, :tech => ByRow(t -> tech_to_primemover[t]) => :PrimeMovers)
-    transform!(
-        df_generator,
-        :tech => ByRow(t -> get(tech_to_fuel, t, missing)) => :ThermalFuels
-    )
-
     # create generators - nested structure to keep units grouped by original ID
     # TODO:
     #   HydroDispatch (RoR) should be changed into HydroEnergyReservoir (dam)
@@ -371,10 +363,6 @@ function create_system!(data)
     # TODO: inertia
     # TODO: PS should use HydroPumpedStorage
     #   https://nrel-sienna.github.io/PowerSystems.jl/stable/model_library/generated_HydroPumpedStorage/#HydroPumpedStorage
-
-    # add new column based on mapping
-    transform!(df_storage, :tech => ByRow(t -> tech_to_datatype[t]) => :DataType)
-    transform!(df_storage, :tech => ByRow(t -> tech_to_primemover[t]) => :PrimeMovers)
 
     storages = Dict{Int,Dict{Int,Union{PSY.EnergyReservoirStorage,PSY.HydroPumpedStorage}}}()
     battery_storages = Dict{Int,Dict{Int,PSY.EnergyReservoirStorage}}()
