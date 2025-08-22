@@ -9,6 +9,24 @@ See minimum working example workflow in `examples/`.
 
 ## Development
 
+### Add data
+
+To add data, clone the `ARPST-UniMelb/NEM-reliability-suite`
+
+```sh
+git clone git@github.com:ARPST-UniMelb/NEM-reliability-suite.git
+cp -r NEM-reliability-suite/data/nem12 data/nem12
+```
+
+If you already clone it, pull to update to the latest data
+
+```sh
+cd NEM-reliability-suite
+git pull
+cd ..
+cp -r NEM-reliability-suite/data/nem12 data/nem12
+```
+
 ### Installation
 
 ```julia
