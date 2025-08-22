@@ -41,7 +41,7 @@ jobs:
 
       - name: Copy nem12 data
         run: |
-          rsync -a NEM-reliability-suite/data/nem12/ data/nem12/
+          rsync -a NEM-reliability-suite/data/nem12 ./data/
 
       - uses: julia-actions/setup-julia@v2
         with:
