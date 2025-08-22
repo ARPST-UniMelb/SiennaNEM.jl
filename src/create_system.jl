@@ -110,8 +110,6 @@ function create_system!(data)
     #   No reactive capability data > same as capacity for now
 
     # create generators - nested structure to keep units grouped by original ID
-    # TODO:
-    #   HydroDispatch (RoR) should be changed into HydroEnergyReservoir (dam)
     generators = Dict{Int,Dict{Int,PSY.Generator}}()
     thermal_generators = Dict{Int,Dict{Int,PSY.ThermalStandard}}()
     renewable_dispatch_generators = Dict{Int,Dict{Int,PSY.RenewableDispatch}}()
@@ -119,18 +117,21 @@ function create_system!(data)
 
     if !ENV_HYDRORES_AS_THERMAL
         hydro_dispatch_generators = Dict{Int,Dict{Int,PSY.HydroDispatch}}()
+        hydro_energyreservoir_generators = Dict{Int,Dict{Int,PSY.HydroEnergyReservoir}}()
     else
         hydro_dispatch_generators = Dict{Int,Dict{Int,PSY.ThermalStandard}}()
+        hydro_energyreservoir_generators = Dict{Int,Dict{Int,PSY.ThermalStandard}}()
     end
 
     # NOTE:
     #   In initial year (not looking at future _orig_Generator_n_sched), only
-    # ThermalStandard and HydroDispatch has n > 1.
+    # ThermalStandard, HydroDispatch, and HydroEnergyReservoir has n > 1.
     # 
     #   unique(df_generator[df_generator.n .> 1, :DataType])
-    #   2-element Vector{DataType}:
+    #   3-element Vector{DataType}:
     #    ThermalStandard
     #    HydroDispatch
+    #    HydroEnergyReservoir
 
     # NOTE:
     #   1. RenewableDispatch and RenewableNonDispatch is free (cvar == 0)
@@ -238,6 +239,45 @@ function create_system!(data)
                     )
                     generators[row.id][i] = gen
                     hydro_dispatch_generators[row.id][i] = gen
+                    add_component!(sys, gen)
+                end
+            end
+
+        elseif row.DataType == HydroEnergyReservoir
+            if !ENV_HYDRORES_AS_THERMAL
+                # TODO: support HydroEnergyReservoir
+                continue
+            else
+                hydro_energyreservoir_generators[row.id] = Dict{Int,PSY.ThermalStandard}()
+                for i in 1:row.n
+                    name = string(row.id, "_", i)
+                    gen = PSY.ThermalStandard(;
+                        name=name,
+                        available=row.active,
+                        status=true,
+                        bus=buses[row.bus_id],
+                        active_power=0,
+                        reactive_power=0,
+                        rating=1,
+                        active_power_limits=(min=row.pmin / row.pmax, max=1),
+                        reactive_power_limits=(min=-1, max=1),  # same as capacity for now
+                        ramp_limits=(up=row.rdw / row.pmax, down=row.rup / row.pmax),
+                        operation_cost=ThermalGenerationCost(
+                            variable=CostCurve(;  # Sienna support FuelCurve with fuel_cost
+                                value_curve=LinearCurve(row.cvar),
+                            ),
+                            fixed = 0.0,
+                            start_up = 0.0,
+                            shut_down = 0.0,
+                        ),
+                        base_power=row.pmax, # MVA
+                        time_limits=nothing, # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
+                        must_run=false,
+                        prime_mover_type=PrimeMovers.GT,  # Gas Turbine to show fast ramp
+                        fuel=ThermalFuels.OTHER,  # other, using water
+                    )
+                    generators[row.id][i] = gen
+                    hydro_energyreservoir_generators[row.id][i] = gen
                     add_component!(sys, gen)
                 end
             end
@@ -380,13 +420,13 @@ function create_system!(data)
         end
 
         storage_capacity = row.emax / row.capacity
-        initial_storage_capacity_level = row.eini/row.emax
+        initial_storage_capacity_level = row.eini/100
         input_active_power_limits_max = row.lmax / row.capacity
         output_active_power_limits_max = row.pmax / row.capacity
-        storage_target = row.eini/row.emax
+        storage_target = row.eini/100
 
         if row.DataType == EnergyReservoirStorage
-            storage_level_limits_min = row.emin/row.emax
+            storage_level_limits_min = row.emin/100
             storages[row.id] = Dict{Int,PSY.EnergyReservoirStorage}()
             battery_storages[row.id] = Dict{Int,PSY.EnergyReservoirStorage}()
             for i in 1:row.n
@@ -467,7 +507,7 @@ function create_system!(data)
                     add_component!(sys, storage)
                 end
             else
-                storage_level_limits_min = row.emin/row.emax
+                storage_level_limits_min = row.emin/100
                 storages[row.id] = Dict{Int,PSY.EnergyReservoirStorage}()
                 hydro_storages[row.id] = Dict{Int,PSY.EnergyReservoirStorage}()
                 for i in 1:row.n

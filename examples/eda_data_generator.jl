@@ -28,3 +28,9 @@ sort!(df, [:ThermalFuels, :PrimeMovers, :tech, :count])
 #   20 │ LargePV                      LargePV                      RenewableDispatch     PrimeMovers.PVe = 21  missing                               10
 #   21 │ RoofPV                       RoofPV                       RenewableNonDispatch  PrimeMovers.PVe = 21  missing                               12
 #   22 │ Wind                         Wind                         RenewableDispatch     PrimeMovers.WT = 22   missing                               10
+
+unique(data["generator"][data["generator"].n .> 1, :DataType])
+# 3-element Vector{DataType}:
+#  ThermalStandard
+#  HydroDispatch
+#  HydroEnergyReservoir
