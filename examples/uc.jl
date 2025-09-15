@@ -10,11 +10,11 @@ using Dates
 
 using PowerModels
 
-system_data_dir = "data/nem12"
+system_data_dir = "data/nem12-arrow"
 ts_data_dir = joinpath(system_data_dir, "schedule-1w")
 
-data = read_system_data_csv(system_data_dir)
-read_ts_data_csv!(data, ts_data_dir)
+data = read_system_data(system_data_dir)
+read_ts_data!(data, ts_data_dir)
 
 sys = create_system!(data)
 add_ts!(sys, data, scenario_name=1)

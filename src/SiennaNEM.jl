@@ -3,6 +3,7 @@ module SiennaNEM
 using PowerSystems
 using DataFrames
 using CSV
+using Arrow
 
 const PSY = PowerSystems
 const DF = DataFrames
@@ -18,7 +19,7 @@ const ENV_HYDRORES_AS_THERMAL = true
 const ENV_HYDROPUMP_AS_BATTERY = true
 
 # Exported functions and constants
-export read_system_data_csv, read_ts_data_csv!, preprocess_date!
+export read_system_data, read_ts_data!, preprocess_date!
 export create_system!, add_ts!
 export tech_to_primemover, tech_to_datatype, tech_to_fuel
 export get_flat_generators, get_generator_units, count_all_generators
