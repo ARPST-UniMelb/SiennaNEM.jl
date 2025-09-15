@@ -58,7 +58,8 @@ jobs:
       - name: Copy nem12 data
         if: ${{ env.DATA_MODE == 'full' }}
         run: |
-          rsync -a NEM-reliability-suite/data/nem12 ./data/
+          rm -rf ./data/nem12 || true
+          cp -r NEM-reliability-suite/data/nem12 ./data/
           echo "nem12 data copied successfully"
 
       # Show mode in logs
