@@ -30,6 +30,10 @@ function groupby_scenario_at_day(df::DataFrame, day::Date)
     return groupbyd(df_init_day, :scenario)
 end
 
+function groupby_scenario(df::DataFrame)
+    return groupbyd(df, :scenario)
+end
+
 # TODO:
 #   1. Support multiple ts
 #   2. Normalize data in p.u. not in here, but in reading data

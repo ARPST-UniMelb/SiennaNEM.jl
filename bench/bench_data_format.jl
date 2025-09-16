@@ -10,7 +10,7 @@ Benchmark the read operation for a given data directory.
 Returns a BenchmarkTools.BenchmarkGroup result.
 """
 function bench_read(data_dir::AbstractString; samples=10, seconds=5)
-    bm = @benchmarkable read_system_data($data_dir) samples=samples seconds=seconds
+    bm = @benchmarkable read_system_data($data_dir) samples = samples seconds = seconds
     return run(bm)
 end
 
@@ -22,7 +22,7 @@ Automatically reads data once for setup.
 """
 function bench_create(data_dir::AbstractString; samples=10, seconds=5)
     data = read_system_data(data_dir)  # read once
-    bm = @benchmarkable create_system!($data) samples=samples seconds=seconds
+    bm = @benchmarkable create_system!($data) samples = samples seconds = seconds
     return run(bm)
 end
 

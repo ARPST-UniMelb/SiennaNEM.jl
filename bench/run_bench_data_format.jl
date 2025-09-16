@@ -1,5 +1,7 @@
 using SiennaNEM
 using DataFrames
+
+
 include("bench_data_format.jl")
 
 # Data directories
@@ -8,14 +10,14 @@ const DATA_DIRS = Dict(
     "arrow" => "data/nem12-arrow"
 )
 
-println("Running benchmarks...")
+println("Running data format benchmarks...")
 results = bench_all(DATA_DIRS; samples=10, seconds=5)
 
 # Prepare a summary table
 summary = DataFrame(
-    Format = String[],
-    Operation = String[],
-    MedianMs = Float64[]
+    Format=String[],
+    Operation=String[],
+    MedianMs=Float64[]
 )
 
 for (fmt, group) in results

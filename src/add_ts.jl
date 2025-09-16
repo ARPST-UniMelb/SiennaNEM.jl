@@ -1,4 +1,10 @@
-function add_ts!(sys, data; scenario_name=1)
+function add_ts!(
+    sys, data; 
+    horizon=nothing,    # auto-detect from data["demand_ts"] if nothing
+    interval=nothing,   # auto-detect from data["demand_ts"] if nothing
+    scenario_name=1
+)
+
     # TODO: use multiple scenarios as mentioned in
     #   https://nrel-sienna.github.io/PowerSystems.jl/stable/explanation/time_series/#Forecasts
     df_generator = data["generator"]
@@ -20,22 +26,32 @@ function add_ts!(sys, data; scenario_name=1)
     unique_gen_id_ts = df_generator_ts_unique_gen_id[:, :id_gen]
     df_generator_ts = filter(row -> row.id_gen in unique_gen_id_ts, df_generator_ts)
 
-    # add demand st (init_day)
-    dfs_demand_ts = groupby_scenario_at_init_day(df_demand_ts)
+    # add demand st
+    dfs_demand_ts = groupbyd(df_demand_ts, :scenario)
     dfs_demand_ts_s = groupbyd(dfs_demand_ts[scenario_name], :id_dem)
     add_sts!(sys, demands, dfs_demand_ts_s, :id_dem)
 
-    # add generator st (init_day)
-    dfs_generator_ts = groupby_scenario_at_init_day(df_generator_ts)
+    # add generator st
+    dfs_generator_ts = groupbyd(df_generator_ts, :scenario)
     dfs_generator_ts_s = groupbyd(dfs_generator_ts[scenario_name], :id_gen)
     add_sts!(sys, renewable_dispatch_generators, dfs_generator_ts_s, :id_gen)
     add_sts!(sys, renewable_nondispatch_generators, dfs_generator_ts_s, :id_gen)
 
     # add forecast time series from StaticTimeSeries
+    if horizon === nothing || interval === nothing
+        first_key = first(keys(dfs_demand_ts_s))
+        dates = dfs_demand_ts_s[first_key][!, :date]
+        if horizon === nothing
+            horizon = dates[end] - dates[1]
+        end
+        if interval === nothing
+            interval = dates[2] - dates[1]
+        end
+    end
     transform_single_time_series!(
         sys,
-        Dates.Hour(24), # horizon
-        Dates.Minute(60), # interval
+        horizon, # horizon, for example Dates.Hour(24)
+        interval, # interval, for example Dates.Minute(60)
     );
 
     data["generator_ts"] = df_generator_ts
