@@ -71,4 +71,11 @@ Pkg.test()
 
 ### Benchmark
 
-run `bench/run_benchmark.jl`.
+```julia
+using Pkg
+using TestEnv
+TestEnv.activate("SiennaNEM")
+Pkg.resolve()
+```
+
+run `bench/run_bench_data_format.jl` and `bench/run_bench_horizon.jl`

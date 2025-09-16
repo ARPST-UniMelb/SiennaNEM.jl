@@ -47,8 +47,9 @@ set_network_model!(
     ),
 )
 
-hours = Hour(24)
 solver = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.5)
+
+hours = Hour(24)
 problem = DecisionModel(template_uc, sys; optimizer=solver, horizon=hours)
 build!(problem; output_dir=mktempdir())
 solve!(problem)
