@@ -51,9 +51,30 @@ display(res)
 # read_variable: PowerSimulations Problem Variables Results
 
 # NOTE:
-# Use sort_cols for Load and sort_nested_cols for Generator
-read_variable(res, "ActivePowerOutVariable__EnergyReservoirStorage")
 
-read_aux_variable(res, "TimeDurationOn__ThermalStandard")
-read_aux_variable(res, "TimeDurationOff__ThermalStandard")
-read_aux_variable(res, "StorageEnergyOutput__EnergyReservoirStorage")
+sort_res_cols(read_aux_variable(res, "TimeDurationOn__ThermalStandard"))
+sort_res_cols(read_aux_variable(res, "TimeDurationOff__ThermalStandard"))
+sort_res_cols(read_aux_variable(res, "StorageEnergyOutput__EnergyReservoirStorage"))
+
+sort_res_cols(read_expression(res, "ProductionCostExpression__RenewableDispatch"))
+sort_res_cols(read_expression(res, "ProductionCostExpression__ThermalStandard"))
+sort_res_cols(read_expression(res, "ActivePowerBalance__ACBus"))
+
+sort_res_cols(read_parameter(res, "ActivePowerTimeSeriesParameter__RenewableNonDispatch"))
+sort_res_cols(read_parameter(res, "ActivePowerTimeSeriesParameter__PowerLoad"))
+sort_res_cols(read_parameter(res, "ActivePowerTimeSeriesParameter__RenewableDispatch"))
+
+sort_res_cols(read_variable(res, "StorageEnergyShortageVariable__EnergyReservoirStorage"))
+sort_res_cols(read_variable(res, "ActivePowerVariable__ThermalStandard"))
+sort_res_cols(read_variable(res, "FlowActivePowerVariable__Line"))
+sort_res_cols(read_variable(res, "EnergyVariable__EnergyReservoirStorage"))
+sort_res_cols(read_variable(res, "OnVariable__ThermalStandard"))
+sort_res_cols(read_variable(res, "SystemBalanceSlackDown__ACBus"))
+sort_res_cols(read_variable(res, "StorageEnergySurplusVariable__EnergyReservoirStorage"))
+sort_res_cols(read_variable(res, "StartVariable__ThermalStandard"))
+sort_res_cols(read_variable(res, "ReservationVariable__EnergyReservoirStorage"))
+sort_res_cols(read_variable(res, "SystemBalanceSlackUp__ACBus"))
+sort_res_cols(read_variable(res, "ActivePowerInVariable__EnergyReservoirStorage"))
+sort_res_cols(read_variable(res, "ActivePowerVariable__RenewableDispatch"))
+sort_res_cols(read_variable(res, "StopVariable__ThermalStandard"))
+sort_res_cols(read_variable(res, "ActivePowerOutVariable__EnergyReservoirStorage"))

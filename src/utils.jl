@@ -40,26 +40,19 @@ function show_parameter(df_parameter)
     println()
 end
 
-function sort_cols(df)
+function sort_res_cols(df)
     """
-    Sort columns while moving the DateTime in the first position.
-    Sorting order: ascending order.
+    Sort columns while moving DateTime to first position if present.
+    Handles both nested (M_N) and non-nested column names.
     """
-    datetime_col = "DateTime"
-    other_cols = filter(!=(datetime_col), names(df))
-    sorted_cols = sort(other_cols; by = name -> parse(Int, name))
-    return select(df, [datetime_col; sorted_cols])
-end
-
-function sort_nested_cols(df)
-    """
-    Sort nested columns while moving the DateTime in the first position.
-    Sorting order: for each M_N value, sort all M then N values in ascending order.
-    """
-    datetime_col = "DateTime"
-    m_n_cols = filter(!=(datetime_col), names(df))
-    sorted_cols = sort(m_n_cols; by = name -> parse.(Int, split(name, "_")))
-    return select(df, [datetime_col; sorted_cols])
+    if "DateTime" in names(df)
+        other_cols = filter(!=("DateTime"), names(df))
+        sorted_cols = sort(other_cols; by = name -> parse.(Int, split(name, "_")))
+        return select(df, ["DateTime"; sorted_cols])
+    else
+        sorted_cols = sort(names(df); by = name -> parse.(Int, split(name, "_")))
+        return select(df, sorted_cols)
+    end
 end
 
 function diff_df(df1::DataFrame, df2::DataFrame; timecol::Symbol = :DateTime)
