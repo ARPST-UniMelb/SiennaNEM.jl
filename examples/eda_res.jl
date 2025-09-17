@@ -50,6 +50,8 @@ display(res)
 # read_parameter: PowerSimulations Problem Parameters Results
 # read_variable: PowerSimulations Problem Variables Results
 
+# NOTE:
+# Use sort_cols for Load and sort_nested_cols for Generator
 read_variable(res, "ActivePowerOutVariable__EnergyReservoirStorage")
 
 read_aux_variable(res, "TimeDurationOn__ThermalStandard")

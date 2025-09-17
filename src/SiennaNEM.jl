@@ -13,6 +13,7 @@ include("read_data.jl")
 include("create_system.jl")
 include("utils.jl")
 include("add_ts.jl")
+include("problem/uc.jl")
 
 # Environment variables for configuration
 const ENV_HYDRORES_AS_THERMAL = true
@@ -28,5 +29,7 @@ export add_sts!, add_st!
 export show_parameter
 export sort_cols, sort_nested_cols
 export diff_df
+
+export build_problem_base_uc
 
 end

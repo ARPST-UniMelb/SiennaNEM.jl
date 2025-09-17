@@ -42,7 +42,7 @@ end
 
 function sort_cols(df)
     """
-    Sort nested columns while moving the DateTime in the first position.
+    Sort columns while moving the DateTime in the first position.
     Sorting order: ascending order.
     """
     datetime_col = "DateTime"
@@ -54,7 +54,7 @@ end
 function sort_nested_cols(df)
     """
     Sort nested columns while moving the DateTime in the first position.
-    Sorting order: for each M value, sort all N values in ascending order.
+    Sorting order: for each M_N value, sort all M then N values in ascending order.
     """
     datetime_col = "DateTime"
     m_n_cols = filter(!=(datetime_col), names(df))
