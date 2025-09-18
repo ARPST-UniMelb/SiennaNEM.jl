@@ -26,7 +26,6 @@ To add data, clone the `ARPST-UniMelb/NEM-reliability-suite`
 
 ```sh
 git clone git@github.com:ARPST-UniMelb/NEM-reliability-suite.git
-cp -r NEM-reliability-suite/data/nem12 data/nem12
 ```
 
 If you already clone it, pull to update to the latest data
