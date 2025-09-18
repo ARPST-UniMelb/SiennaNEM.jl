@@ -35,14 +35,12 @@ If you already clone it, pull to update to the latest data
 cd NEM-reliability-suite
 git pull
 cd ..
-cp -r NEM-reliability-suite/data/nem12 data/nem12
+cp -r NEM-reliability-suite/data/ data/nem12
 ```
 
 <!-- 
 ```sh
 rm -rf data/nem12
-cp -r NEM-reliability-suite/data/nem12-updated-csv data/nem12
-cp -r NEM-reliability-suite/data/nem12-updated-arrow data/nem12-arrow
 ```
 -->
 
