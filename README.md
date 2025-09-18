@@ -34,16 +34,7 @@ If you already clone it, pull to update to the latest data
 cd NEM-reliability-suite
 git pull
 cd ..
-```
-
-Then remove old `nem12` (if exists)
-
-```sh
-rm -rf data/nem12
-mkdir -p data/nem12/csv
-mkdir -p data/nem12/arrow
-cp -r NEM-reliability-suite/data/csv data/nem12/csv
-cp -r NEM-reliability-suite/data/arrow data/nem12/arrow
+cp -r NEM-reliability-suite/data/ data/nem12
 ```
 
 <!-- 
