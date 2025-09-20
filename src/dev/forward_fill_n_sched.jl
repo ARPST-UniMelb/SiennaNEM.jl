@@ -40,51 +40,45 @@ function forward_fill!(df; col_names)
     end
 end
 
-# Load data
-system_data_dir = "data/nem12/arrow"
-ts_data_dir = joinpath(system_data_dir, "schedule-1w")
-data = read_system_data(system_data_dir)
-read_ts_data!(data, ts_data_dir)
+"""
+    create_timeseries_df(df_static, df_ts, id_col, col_ref, scenario, date_start, date_end; interval=Dates.Hour(1))
 
-df_bus = data["bus"]
-df_generator = data["generator"]
-df_line = data["line"]
-df_demand = data["demand"]
-df_storage = data["storage"]
+Create a time series DataFrame with forward-filled values by combining static and time series data.
 
-df_demand_l_ts = data["demand_l_ts"]
-df_generator_pmax_ts = data["generator_pmax_ts"]
-df_generator_n_ts = data["generator_n_ts"]
-df_der_p_ts = data["der_p_ts"]
-df_storage_emax_ts = data["storage_emax_ts"]
-df_storage_lmax_ts = data["storage_lmax_ts"]
-df_storage_n_ts = data["storage_n_ts"]
-df_storage_pmax_ts = data["storage_pmax_ts"]
-df_line_tmax_ts = data["line_tmax_ts"]
-df_line_tmin_ts = data["line_tmin_ts"]
+# Arguments
+- `df_static`: Static data DataFrame containing baseline values
+- `df_ts`: Time series data DataFrame with columns: date, scenario, id_col, value
+- `id_col`: Column name for ID (String, e.g., "id_gen", "id_storage")
+- `col_ref`: Column name for static reference (String, e.g., "pmax", "n", "emax")
+- `scenario`: Scenario number (Integer) to filter time series data
+- `date_start`: Start date (DateTime) for the output time series
+- `date_end`: End date (DateTime) for the output time series
+- `interval`: Time interval for the output series (default: Dates.Hour(1))
 
+# Returns
+- `df_ts_out`: Output time series DataFrame with date column and forward-filled values
+- `df_ts_before_selected`: DataFrame with latest values before date_start (for debugging)
+- `df_ts_selected`: DataFrame with values in the selected period (for debugging)
+
+# Process
+1. Initialize with static baseline values from df_static
+2. Update with latest available values before date_start (if any)
+3. Create hourly time series from date_start to date_end
+4. Inject specific time series values from df_ts where available
+5. Forward-fill missing values to ensure complete coverage
+
+# Example
+```julia
+df_out, df_before, df_selected = create_timeseries_df(
+    df_generator, df_generator_pmax_ts, "id_gen", "pmax", 1,
+    DateTime(2044, 6, 28), DateTime(2044, 7, 2)
+)
+```
+"""
 function create_timeseries_df(
     df_static, df_ts, id_col, col_ref, scenario, date_start, date_end;
     interval=Dates.Hour(1),
 )
-    """
-    Create a time series DataFrame with forward-filled values.
-    
-    Parameters:
-    - df_static: Static data DataFrame
-    - df_ts: Time series data DataFrame
-    - id_col: Column name for ID (e.g., "id_gen")
-    - col_ref: Column name for static reference (e.g., "pmax", "n")
-    - scenario: Scenario number
-    - date_start: Start date
-    - date_end: End date
-    
-    Returns:
-    - df_ts_out: Output time series DataFrame
-    - df_ts_before_selected: DataFrame with data before date_start (for debugging)
-    - df_ts_selected: DataFrame with data in the selected period (for debugging)
-    """
-
     # NOTE: if needed, this can be further optimized by pre-allocate with values
     
     # Create initial data
@@ -147,9 +141,32 @@ function create_timeseries_df(
     return df_ts_out, df_ts_before_selected, df_ts_selected
 end
 
+# Load data
+system_data_dir = "data/nem12/arrow"
+ts_data_dir = joinpath(system_data_dir, "schedule-1w")
+data = read_system_data(system_data_dir)
+read_ts_data!(data, ts_data_dir)
+
+df_bus = data["bus"]
+df_generator = data["generator"]
+df_line = data["line"]
+df_demand = data["demand"]
+df_storage = data["storage"]
+
+df_demand_l_ts = data["demand_l_ts"]
+df_generator_pmax_ts = data["generator_pmax_ts"]
+df_generator_n_ts = data["generator_n_ts"]
+df_der_p_ts = data["der_p_ts"]
+df_storage_emax_ts = data["storage_emax_ts"]
+df_storage_lmax_ts = data["storage_lmax_ts"]
+df_storage_n_ts = data["storage_n_ts"]
+df_storage_pmax_ts = data["storage_pmax_ts"]
+df_line_tmax_ts = data["line_tmax_ts"]
+df_line_tmin_ts = data["line_tmin_ts"]
+
 # NOTE:
-# Sienna does'nt support change of emax and lmax, we need to add that as extra constraints straight to JuMP data
-# Sienna also does'nt support change of n, that is number of available unit
+# Sienna doesn't support change of emax and lmax, we need to add that as extra constraints straight to JuMP data
+# Sienna also doesn't support change of n, that is number of available unit
 # When we add constraints to JuMP model, check first is the timeseries data changes or not
 
 # ================================
@@ -181,7 +198,7 @@ scenario = 1
 
 # Create time series
 df_ts_out, df_ts_before_selected, df_ts_selected = create_timeseries_df(
-    df_static, df_ts, id_col, col_ref, scenario, date_start, date_end
+    df_static, df_ts, id_col, static_col_ref, scenario, date_start, date_end
 )
 
 # Debug output
