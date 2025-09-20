@@ -3,17 +3,37 @@ using DataFrames
 using CSV
 using Dates
 
-function forward_fill!(df, exclude_cols=[:date])
-    for col_name in names(df)
-        if !(col_name in exclude_cols)
-            col_values = df[!, col_name]
-            last_valid = col_values[1]  # Start with first value
-            
-            for i in 2:length(col_values)
-                if ismissing(col_values[i])
-                    col_values[i] = last_valid
+"""
+    forward_fill!(df; col_names)
+
+Performs forward fill (last observation carried forward) in a DataFrame.
+
+# Arguments
+- `df`: DataFrame to modify in-place
+- `col_names`: Collection of column names (Symbols) to forward fill
+
+# Assumptions
+- First row values are never missing (pre-allocated/known values)
+- Specified columns exist in the DataFrame
+
+# Example
+```julia
+numeric_cols = [:1_1, :1_2, :2_1, :3_1]
+forward_fill!(df; col_names=numeric_cols)
+```
+"""
+function forward_fill!(df; col_names)
+    for col_name in col_names
+        col = df[!, col_name]
+        
+        # Inline the forward fill logic for maximum performance
+        @inbounds begin
+            last_valid = col[1]  # First value is never missing (assumption)
+            for i in 2:length(col)
+                if ismissing(col[i])
+                    col[i] = last_valid
                 else
-                    last_valid = col_values[i]  # Update last valid value
+                    last_valid = col[i]
                 end
             end
         end
@@ -43,7 +63,10 @@ df_storage_pmax_ts = data["storage_pmax_ts"]
 df_line_tmax_ts = data["line_tmax_ts"]
 df_line_tmin_ts = data["line_tmin_ts"]
 
-function create_timeseries_df(df_static, df_ts, id_col, static_col_ref, scenario, date_start, date_end)
+function create_timeseries_df(
+    df_static, df_ts, id_col, col_ref, scenario, date_start, date_end;
+    interval=Dates.Hour(1),
+)
     """
     Create a time series DataFrame with forward-filled values.
     
@@ -51,7 +74,7 @@ function create_timeseries_df(df_static, df_ts, id_col, static_col_ref, scenario
     - df_static: Static data DataFrame
     - df_ts: Time series data DataFrame
     - id_col: Column name for ID (e.g., "id_gen")
-    - static_col_ref: Column name for static reference (e.g., "pmax", "n")
+    - col_ref: Column name for static reference (e.g., "pmax", "n")
     - scenario: Scenario number
     - date_start: Start date
     - date_end: End date
@@ -61,11 +84,14 @@ function create_timeseries_df(df_static, df_ts, id_col, static_col_ref, scenario
     - df_ts_before_selected: DataFrame with data before date_start (for debugging)
     - df_ts_selected: DataFrame with data in the selected period (for debugging)
     """
+
+    # NOTE: if needed, this can be further optimized by pre-allocate with values
     
     # Create initial data
     id_col_val = string.(df_static[!, id_col])
-    static_col_ref_val = df_static[!, static_col_ref]
-    df_init = DataFrame(Dict(zip(id_col_val, static_col_ref_val)))
+    col_ref_val = df_static[!, col_ref]
+    df_init = DataFrame(Dict(zip(id_col_val, col_ref_val)))
+    col_names = names(df_init)
 
     # Get data before selected period
     df_ts_before_selected = filter(
@@ -87,11 +113,12 @@ function create_timeseries_df(df_static, df_ts, id_col, static_col_ref, scenario
     end
 
     # Pre-allocate output DataFrame
-    # TODO: use interval
-    date_range = collect(date_start:Hour(1):date_end)
+    date_range = collect(date_start:interval:date_end)
     df_ts_out = DataFrame(date=date_range)
-    for col_name in names(df_init)
-        df_ts_out[!, col_name] = [df_init[1, col_name]; fill(missing, length(date_range) - 1)]
+    for col_name in col_names
+        df_ts_out[!, col_name] = [
+            df_init[1, col_name]; fill(missing, length(date_range) - 1)
+        ]
     end
 
     # Get data in selected period and inject values
@@ -104,19 +131,18 @@ function create_timeseries_df(df_static, df_ts, id_col, static_col_ref, scenario
     
     for row in eachrow(df_ts_selected)
         gen_id_col = string(row[id_col])  # Convert id to string (column name)
-        target_datetime = row.date       # Use full DateTime
         
         # Find the row index where datetime matches exactly
-        date_idx = findfirst(==(target_datetime), df_ts_out.date)
+        date_idx = findfirst(==(row.date), df_ts_out.date)
         
         # Update the value if both column and row exist
-        if !isnothing(date_idx) && gen_id_col in names(df_ts_out)
+        if !isnothing(date_idx) && gen_id_col in col_names
             df_ts_out[date_idx, gen_id_col] = row.value
         end
     end
 
     # Forward fill missing values
-    forward_fill!(df_ts_out)
+    forward_fill!(df_ts_out; col_names=col_names)
 
     return df_ts_out, df_ts_before_selected, df_ts_selected
 end
@@ -133,7 +159,7 @@ end
 # Configuration for debugging n
 # df_static = df_generator
 # id_col = "id_gen"
-# static_col_ref = "n"
+# col_ref = "n"
 # df_ts = df_generator_n_ts
 # target_datetime = DateTime("2024-02-01T00:00:00")
 # columns_to_check = ["date", "1", "84", "69"]
@@ -143,7 +169,7 @@ end
 # Configuration for debugging pmax
 df_static = df_generator
 id_col = "id_gen"
-static_col_ref = "pmax"
+col_ref = "pmax"
 df_ts = df_generator_pmax_ts
 target_datetime = DateTime("2044-06-30T00:00:00")
 columns_to_check = ["date", "78", "79"]
@@ -155,7 +181,7 @@ scenario = 1
 
 # Create time series
 df_ts_out, df_ts_before_selected, df_ts_selected = create_timeseries_df(
-    df_static, df_ts, id_col, static_col_ref, scenario, date_start, date_end
+    df_static, df_ts, id_col, col_ref, scenario, date_start, date_end
 )
 
 # Debug output
