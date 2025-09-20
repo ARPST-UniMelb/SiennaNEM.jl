@@ -42,20 +42,41 @@ df_storage_pmax_ts = data["storage_pmax_ts"]
 df_line_tmax_ts = data["line_tmax_ts"]
 df_line_tmin_ts = data["line_tmin_ts"]
 
+# NOTE:
+# Sienna does'nt support change of emax and lmax, we need to add that as extra constraints straight to JuMP data
+# Sienna also does'nt support change of n, that is number of available unit
+# When we add constraints to JuMP model, check first is the timeseries data changes or not
+
 # data
 df_static = df_generator
-df_ts = df_generator_n_ts
-# df_ts = df_generator_pmax_ts
+id_col = "id_gen"
 
-# initial n data
-df_static[:, [:id_gen, :n]]
-gen_ids = string.(df_static.id_gen)
-gen_ns = df_static.n
-df_init = DataFrame(Dict(zip(gen_ids, gen_ns)))
+# static_col_ref = "n"
+# df_ts = df_generator_n_ts
 
-date_start = DateTime(2019, 1, 1)
-date_end = DateTime(2025, 1, 1)
+static_col_ref = "pmax"
+df_ts = df_generator_pmax_ts
+
+# scenario
 scenario = 1
+
+# star and end
+# to debug n
+# target_datetime = DateTime("2024-02-01T00:00:00")
+# columns_to_check = ["date", "1", "84", "69"]
+# date_start = DateTime(2024, 1, 1)
+# date_end = DateTime(2025, 1, 1)
+
+# to debug pmax
+target_datetime = DateTime("2044-06-30T00:00:00")
+columns_to_check = ["date", "78", "79"]
+date_start = DateTime(2044, 6, 28)
+date_end = DateTime(2044, 7, 2)
+
+# initial data
+id_col_val = string.(df_static[!, id_col])
+static_col_ref_val = df_static[!, static_col_ref]
+df_init = DataFrame(Dict(zip(id_col_val, static_col_ref_val)))
 
 # NOTE: I haven't test the select last before selected
 df_ts_before_selected = filter(
@@ -66,12 +87,12 @@ df_ts_before_selected = filter(
 # update df_init with df_ts_before_selected
 if nrow(df_ts_before_selected) > 0
     # get latest on before date
-    df_ts_before_selected = combine(groupby(df_ts_before_selected, :id_gen)) do group
+    df_ts_before_selected = combine(groupby(df_ts_before_selected, id_col)) do group
         subset(group, :date => x -> x .== maximum(x))
     end
 
     # update init using latest
-    ids_update = string.(df_ts_before_selected.id_gen)
+    ids_update = string.(df_ts_before_selected[!, id_col])
     gen_values_update = df_ts_before_selected.value
     df_init[1, ids_update] .= gen_values_update
 end
@@ -91,7 +112,7 @@ df_ts_selected = filter(
     df_ts
 )
 for row in eachrow(df_ts_selected)
-    gen_id_col = string(row.id_gen)  # Convert id_gen to string (column name)
+    gen_id_col = string(row[id_col])  # Convert id_gen to string (column name)
     target_datetime = row.date       # Use full DateTime, not just Date
     
     # Find the row index where datetime matches exactly
@@ -111,12 +132,8 @@ println(df_ts_before_selected)
 println(df_ts_selected)
 
 # Calculate the datetime range for display
-target_datetime = DateTime("2024-02-01T00:00:00")
 window_hours = 48
-
 start_datetime_show = target_datetime - Hour(window_hours)
 end_datetime_show = target_datetime + Hour(window_hours)
-
 date_filter_show = (df_ts_out.date .>= start_datetime_show) .& (df_ts_out.date .<= end_datetime_show)
-columns_to_check = ["date", "1", "84", "69"]
 show(df_ts_out[date_filter_show, columns_to_check], allrows=true)
