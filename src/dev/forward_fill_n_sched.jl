@@ -42,10 +42,15 @@ df_storage_pmax_ts = data["storage_pmax_ts"]
 df_line_tmax_ts = data["line_tmax_ts"]
 df_line_tmin_ts = data["line_tmin_ts"]
 
+# data
+df_static = df_generator
+df_ts = df_generator_n_ts
+# df_ts = df_generator_pmax_ts
+
 # initial n data
-df_generator[:, [:id_gen, :n]]
-gen_ids = string.(df_generator.id_gen)
-gen_ns = df_generator.n
+df_static[:, [:id_gen, :n]]
+gen_ids = string.(df_static.id_gen)
+gen_ns = df_static.n
 df_init = DataFrame(Dict(zip(gen_ids, gen_ns)))
 
 date_start = DateTime(2024, 1, 1)
@@ -55,25 +60,18 @@ scenario = 1
 # NOTE: I haven't test the select last before selected
 df_ts_before_selected = filter(
     row -> row.date < date_start && row.scenario == scenario,
-    df_generator_n_ts
+    df_ts
 )
 df_ts_before_selected = combine(groupby(df_ts_before_selected, :id_gen)) do group
     subset(group, :date => x -> x .== maximum(x))
 end
-df_ts_selected = filter(
-    row -> row.date >= date_start
-        && row.date <= date_end
-        && row.scenario == scenario,
-    df_generator_n_ts
-)
-println(df_ts_before_selected)
-println(df_ts_selected)
 
 # update df_init with df_ts_before_selected
-gen_ids_update = string.(df_ts_before_selected.id_gen)
+ids_update = string.(df_ts_before_selected.id_gen)
 gen_values_update = df_ts_before_selected.value
-df_init[1, gen_ids_update] .= gen_values_update
+df_init[1, ids_update] .= gen_values_update
 
+# pre-allocate df
 date_range = collect(date_start:Hour(1):date_end)
 df_ts_out = DataFrame(date=date_range)
 for col_name in names(df_init)
@@ -81,6 +79,12 @@ for col_name in names(df_init)
 end
 
 # inject df_ts_selected values into specific row/column locations
+df_ts_selected = filter(
+    row -> row.date >= date_start
+        && row.date <= date_end
+        && row.scenario == scenario,
+    df_ts
+)
 for row in eachrow(df_ts_selected)
     gen_id_col = string(row.id_gen)  # Convert id_gen to string (column name)
     target_datetime = row.date       # Use full DateTime, not just Date
