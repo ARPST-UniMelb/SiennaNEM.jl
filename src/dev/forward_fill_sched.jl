@@ -40,7 +40,7 @@ function forward_fill!(df::DataFrame; col_names::AbstractVector{String})::Nothin
 end
 
 """
-    get_full_ts_df(df_static, df_ts, id_col, col_ref, scenario, date_start, date_end; interval=Dates.Hour(1))
+    get_full_ts_df(df_static, df_ts, id_col, col_ref, scenario, date_start, date_end, interval=Dates.Hour(1))
 
 Create a time series DataFrame with forward-filled values by combining static and time series data.
 
@@ -55,7 +55,9 @@ Create a time series DataFrame with forward-filled values by combining static an
 - `interval`: Time interval for the output series (default: Dates.Hour(1))
 
 # Returns
-- `df_ts_full`: Output time series DataFrame with date column and forward-filled values
+- `(df_ts_full, col_names_affected)`: Tuple containing:
+  - `df_ts_full`: Output time series DataFrame with date column and forward-filled values
+  - `col_names_affected`: Vector of all column names that were affected by time series updates
 
 # Process
 1. Initialize with static baseline values from df_static
@@ -66,7 +68,7 @@ Create a time series DataFrame with forward-filled values by combining static an
 
 # Example
 ```julia
-df_ts_full = get_full_ts_df(
+df_ts_full, col_names_affected = get_full_ts_df(
     df_generator, df_generator_pmax_ts, "id_gen", "pmax", 1,
     DateTime(2044, 6, 28), DateTime(2044, 7, 2)
 )
@@ -79,10 +81,9 @@ function get_full_ts_df(
     col_ref::String,
     scenario::Integer,
     date_start::DateTime,
-    date_end::DateTime;
+    date_end::DateTime,
     interval::Period=Dates.Hour(1)
-)::DataFrame
-    # NOTE: if needed, this can be further optimized by pre-allocate with values
+)::Tuple{DataFrame, Vector{String}}
 
     # Create initial data
     id_col_val::Vector{String} = string.(df_static[!, id_col])
@@ -95,6 +96,7 @@ function get_full_ts_df(
         row -> row.date < date_start && row.scenario == scenario,
         df_ts
     )
+    col_names_affected_before = unique(string.(df_ts_before_selected[!, id_col]))
 
     # Update df_init with latest values before selected period
     if nrow(df_ts_before_selected) > 0
@@ -109,24 +111,31 @@ function get_full_ts_df(
         df_init[1, ids_update] .= gen_values_update
     end
 
-    # Pre-allocate output DataFrame
-    date_range::Vector{DateTime} = collect(date_start:interval:date_end)
-    df_ts_full::DataFrame = DataFrame(date=date_range)
-    for col_name in col_names
-        df_ts_full[!, col_name] = [
-            df_init[1, col_name]; fill(missing, length(date_range) - 1)
-        ]
-    end
-
-    # Get data in selected period and inject values
+    # Get data in selected period
     df_ts_selected::DataFrame = filter(
         row -> row.date >= date_start
-                   && row.date <= date_end
-                   && row.scenario == scenario,
+                    && row.date <= date_end
+                    && row.scenario == scenario,
         df_ts
     )
+    col_names_affected_selected = unique(string.(df_ts_selected[!, id_col]))
 
-    # TODO: in df_ts_full, the one that actually need forward fill and is names in df_ts_selected
+    # Pre-allocate output DataFrame with smart initialization
+    date_range::Vector{DateTime} = collect(date_start:interval:date_end)
+    df_ts_full::DataFrame = DataFrame(date=date_range)
+    
+    for col_name in col_names
+        init_value = df_init[1, col_name]
+        if col_name in col_names_affected_selected
+            # This column will be changed - fill with init for first row, missing for rest
+            df_ts_full[!, col_name] = [init_value; fill(missing, length(date_range) - 1)]
+        else
+            # This column won't change - fill all rows with init value
+            df_ts_full[!, col_name] = fill(init_value, length(date_range))
+        end
+    end
+
+    # Inject values to output DataFrame
     for row in eachrow(df_ts_selected)
         id_col_str::String = string(row[id_col])  # Convert id to string (column name)
 
@@ -139,8 +148,11 @@ function get_full_ts_df(
         end
     end
 
-    # Forward fill missing values
-    forward_fill!(df_ts_full; col_names=col_names)
+    # Forward fill missing values only for columns that were affected in selected period
+    forward_fill!(df_ts_full; col_names=col_names_affected_selected)
 
-    return df_ts_full
+    # Combine all affected columns
+    col_names_affected = unique([col_names_affected_before; col_names_affected_selected])
+
+    return df_ts_full, col_names_affected
 end

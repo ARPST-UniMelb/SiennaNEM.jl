@@ -1,5 +1,7 @@
 using SiennaNEM
 
+using Dates
+
 # Load data
 system_data_dir = "data/nem12/arrow"
 ts_data_dir = joinpath(system_data_dir, "schedule-1w")
@@ -32,32 +34,32 @@ df_line_tmin_ts = data["line_tmin_ts"]
 # DEBUG SECTION
 # ================================
 
-# # Configuration for debugging n
-# df_static = df_generator
-# id_col = "id_gen"
-# col_ref = "n"
-# df_ts = df_generator_n_ts
-# target_datetime = DateTime("2024-02-01T00:00:00")
-# columns_to_check = ["date", "1", "84", "69"]
-# date_start = DateTime(2024, 1, 1)
-# date_end = DateTime(2025, 1, 1)
-
-# Configuration for debugging pmax
+# Configuration for debugging n
 df_static = df_generator
 id_col = "id_gen"
-col_ref = "pmax"
-df_ts = df_generator_pmax_ts
-target_datetime = DateTime("2044-06-30T00:00:00")
-columns_to_check = ["date", "78", "79"]
-date_start = DateTime(2044, 6, 28)
-date_end = DateTime(2044, 7, 2)
+col_ref = "n"
+df_ts = df_generator_n_ts
+target_datetime = DateTime("2024-02-01T00:00:00")
+columns_to_check = ["date", "1", "84", "69"]
+date_start = DateTime(2024, 1, 1)
+date_end = DateTime(2025, 1, 1)
+
+# # Configuration for debugging pmax
+# df_static = df_generator
+# id_col = "id_gen"
+# col_ref = "pmax"
+# df_ts = df_generator_pmax_ts
+# target_datetime = DateTime("2044-06-30T00:00:00")
+# columns_to_check = ["date", "78", "79"]
+# date_start = DateTime(2044, 6, 28)
+# date_end = DateTime(2044, 7, 2)
 
 # Scenario
 scenario = 1
 interval = Dates.Hour(1)
 
 # Create time series
-df_ts_full = get_full_ts_df(
+df_ts_full, col_names_affected = get_full_ts_df(
     df_static, df_ts, id_col, col_ref, scenario, date_start, date_end, interval,
 )
 
@@ -71,3 +73,5 @@ date_filter_show = (
 
 println("\nTime series output (around target datetime):")
 show(df_ts_full[date_filter_show, columns_to_check], allrows=true)
+
+println("\n", col_names_affected)

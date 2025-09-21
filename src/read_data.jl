@@ -86,10 +86,10 @@ end
 #     date_end = DateTime("2044-07-01T23:00:00")
 
 #     # Scenario
-#     data["generator_n_tsf"] = get_full_ts_df(
+#     data["generator_n_tsf"], col_names_affected = get_full_ts_df(
 #         df_generator, df_generator_n_ts, "id_gen", "n", scenario_name, date_start, date_end
 #     )
-#     data["generator_pmax_tsf"] = get_full_ts_df(
+#     data["generator_pmax_tsf"], col_names_affected = get_full_ts_df(
 #         df_generator, df_generator_pmax_ts, "id_gen", "pmax", scenario_name, date_start, date_end
 #     )
 # end
