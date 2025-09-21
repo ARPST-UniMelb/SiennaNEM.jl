@@ -15,6 +15,7 @@ include("create_system.jl")
 include("utils.jl")
 include("add_ts.jl")
 include("problem/uc.jl")
+include("dev/forward_fill_sched.jl")
 
 # Environment variables for configuration
 const ENV_HYDRORES_AS_THERMAL = true
@@ -28,6 +29,7 @@ export get_flat_generators, get_generator_units, count_all_generators
 export groupbyd, groupby_scenario_at_init_day, groupby_scenario_at_day
 export add_sts!, add_st!
 export diff_df, show_parameter, sort_res_cols
+export get_full_ts_df
 
 export build_problem_base_uc
 
