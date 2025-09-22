@@ -71,7 +71,8 @@ function add_tsf_data!(
     date_end=nothing,
 )
     # TODO:
-    #   Request data["generator_pmax_ts"] to change only the capacity, not trace of RE
+    #   1. Request data["generator_pmax_ts"] to change only the capacity, not trace of RE
+    #   2. Implement DER
 
     # NOTE: we assume row number equal with id_ for speed
 
@@ -79,7 +80,7 @@ function add_tsf_data!(
     df_storage = data["storage"]
     df_line = data["line"]
 
-    # df_demand_l_ts = data["demand_l_ts"]
+    df_demand_l_ts = data["demand_l_ts"]
     df_generator_pmax_ts = data["generator_pmax_ts"]
     df_generator_n_ts = data["generator_n_ts"]
     # df_der_p_ts = data["der_p_ts"]
@@ -90,10 +91,13 @@ function add_tsf_data!(
     df_line_tmax_ts = data["line_tmax_ts"]
     df_line_tmin_ts = data["line_tmin_ts"]
 
-    # TODO:
-    # if date_start == nothing, get from df_demand_l_ts min, date_end use max.
+    if date_start === nothing
+        date_start = minimum(df_demand_l_ts.date)
+    end
+    if date_end === nothing
+        date_end = maximum(df_demand_l_ts.date)
+    end
 
-    # Scenario
     data["generator_n_tsf"] = get_full_ts_df(
         df_generator, df_generator_n_ts, "id_gen", "n", scenario_name, date_start, date_end
     )

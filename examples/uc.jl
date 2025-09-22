@@ -9,12 +9,10 @@ using Dates
 system_data_dir = "data/nem12/arrow"
 ts_data_dir = joinpath(system_data_dir, "schedule-1w")
 scenario_name = 1
-date_start = DateTime("2025-01-07T00:00:00")
-date_end = DateTime("2025-01-23T00:00:00")
 
 data = read_system_data(system_data_dir)
 read_ts_data!(data, ts_data_dir)
-add_tsf_data!(data, scenario_name=scenario_name, date_start=date_start, date_end=date_end)
+add_tsf_data!(data, scenario_name=scenario_name)
 update_system_data_bound!(data)
 
 sys = create_system!(data)
