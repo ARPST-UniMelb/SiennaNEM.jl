@@ -59,7 +59,7 @@ scenario = 1
 interval = Dates.Hour(1)
 
 # Create time series
-df_ts_full, col_names_affected = get_full_ts_df(
+df_ts_full = get_full_ts_df(
     df_static, df_ts, id_col, col_ref, scenario, date_start, date_end, interval,
 )
 
@@ -73,5 +73,3 @@ date_filter_show = (
 
 println("\nTime series output (around target datetime):")
 show(df_ts_full[date_filter_show, columns_to_check], allrows=true)
-
-println("\n", col_names_affected)

@@ -55,9 +55,7 @@ Create a time series DataFrame with forward-filled values by combining static an
 - `interval`: Time interval for the output series (default: Dates.Hour(1))
 
 # Returns
-- `(df_ts_full, col_names_affected)`: Tuple containing:
-  - `df_ts_full`: Output time series DataFrame with date column and forward-filled values
-  - `col_names_affected`: Vector of all column names that were affected by time series updates
+- `df_ts_full`: Output time series DataFrame with date column and forward-filled values
 
 # Process
 1. Initialize with static baseline values from df_static
@@ -68,7 +66,7 @@ Create a time series DataFrame with forward-filled values by combining static an
 
 # Example
 ```julia
-df_ts_full, col_names_affected = get_full_ts_df(
+df_ts_full = get_full_ts_df(
     df_generator, df_generator_pmax_ts, "id_gen", "pmax", 1,
     DateTime(2044, 6, 28), DateTime(2044, 7, 2)
 )
@@ -83,7 +81,7 @@ function get_full_ts_df(
     date_start::DateTime,
     date_end::DateTime,
     interval::Period=Dates.Hour(1)
-)::Tuple{DataFrame, Vector{String}}
+)::DataFrame
 
     # Create initial data
     col_names::Vector{String} = string.(df_static[!, id_col])
@@ -95,7 +93,6 @@ function get_full_ts_df(
         row -> row.date < date_start && row.scenario == scenario,
         df_ts
     )
-    col_names_affected_before = unique(string.(df_ts_before_selected[!, id_col]))
 
     # Update df_init with latest values before selected period
     if nrow(df_ts_before_selected) > 0
@@ -150,8 +147,9 @@ function get_full_ts_df(
     # Forward fill missing values only for columns that were affected in selected period
     forward_fill!(df_ts_full; col_names=col_names_affected_selected)
 
-    # Combine all affected columns
-    col_names_affected = unique([col_names_affected_before; col_names_affected_selected])
+    # NOTE: for debugging, combine all affected columns
+    # col_names_affected_before = unique(string.(df_ts_before_selected[!, id_col]))
+    # col_names_affected = unique([col_names_affected_before; col_names_affected_selected])
 
-    return df_ts_full, col_names_affected
+    return df_ts_full
 end

@@ -26,7 +26,7 @@ using Dates
         scenario = 1
 
         # Create time series
-        df_ts_full, col_names_affected = get_full_ts_df(
+        df_ts_full = get_full_ts_df(
             df_static, df_ts, id_col, col_ref, scenario, date_start, date_end
         )
 
@@ -80,7 +80,7 @@ using Dates
         scenario = 1
 
         # Create time series
-        df_ts_full, col_names_affected = get_full_ts_df(
+        df_ts_full = get_full_ts_df(
             df_static, df_ts, id_col, col_ref, scenario, date_start, date_end
         )
 
