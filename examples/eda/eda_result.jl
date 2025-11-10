@@ -142,3 +142,18 @@ end
 # dfs_res["expression"]["ProductionCostExpression__ThermalStandard"]
 # dfs_res["parameter"]["ActivePowerTimeSeriesParameter__PowerLoad"]
 # dfs_res["variable"]["ActivePowerVariable__ThermalStandard"]
+
+# Export all dataframes to CSV
+using CSV
+
+output_dir = "examples/result/nem12/csv"
+mkpath(output_dir)  # Create directory if it doesn't exist
+
+for (category, dfs) in dfs_res
+    for (name, df) in dfs
+        filename = "schedule-1w_$(category)_$(name).csv"
+        filepath = joinpath(output_dir, filename)
+        CSV.write(filepath, df)
+        println("Exported: $filepath")
+    end
+end

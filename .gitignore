@@ -13,6 +13,7 @@ data/
 NEM-reliability-suite.git/
 
 # result
-examples/result/**/*.h5
+examples/result/
+examples/imgs/
 bench/imgs/
 *h5
