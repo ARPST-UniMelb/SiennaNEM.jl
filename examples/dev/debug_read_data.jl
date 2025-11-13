@@ -38,3 +38,8 @@ for (k, fname) in files
 end
 
 data["generator"]
+
+println(collect(keys(data)))
+data["demand_l_ts"]
+initial_time = minimum(data["demand_l_ts"][!, "date"])
+typeof(initial_time)
