@@ -2,15 +2,15 @@ using Dates
 
 # NOTE:
 #   This script require `uc_build_problem.jl` to be run first to setup the
-# system. This script sets up and solves a single time unit decision model. You
-# can specify the horizon and initial_time for the decision model.
+# system. This script sets up and solves a multiple time unit decision model by
+# iterating over time window. You can specify the horizon and initial_time for
+# the decision model.
 
 # Parameters for the decision model
 horizon = Hour(24)
 interval = Hour(1)
 window_shift = Hour(24)
 initial_time = minimum(data["demand_l_ts"][!, "date"])
-
 
 # Create time series slices data
 demand_time_slices = create_time_slices(
