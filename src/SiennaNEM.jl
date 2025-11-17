@@ -4,6 +4,7 @@ using PowerSystems
 using DataFrames
 using CSV
 using Arrow
+using OrderedCollections
 
 const PSY = PowerSystems
 const DF = DataFrames
@@ -29,6 +30,8 @@ export get_flat_generators, get_generator_units, count_all_generators
 export groupbyd, groupby_scenario_at_init_day, groupby_scenario_at_day
 export add_sts!, add_st!
 export diff_df, show_parameter, sort_res_cols
+export get_bus_to_gen, get_gen_to_bus, get_col_to_bus, get_bus_to_col
+export sum_by_bus, get_component_columns
 export get_full_ts_df, add_tsf_data!
 
 export build_problem_base_uc
