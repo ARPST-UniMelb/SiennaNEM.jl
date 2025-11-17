@@ -58,6 +58,7 @@ Pkg.develop(path="../PISP.jl")
 
 ```julia
 using Pkg
+using Revise
 Pkg.activate(".")
 Pkg.instantiate()
 ```

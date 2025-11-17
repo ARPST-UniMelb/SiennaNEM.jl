@@ -40,7 +40,7 @@ function show_parameter(df_parameter)
     println()
 end
 
-function sort_res_cols(df)
+function sort_res_cols(df::DataFrame)
     """
     Sort columns while moving DateTime to first position if present.
     Handles both nested (M_N) and non-nested column names.
@@ -64,6 +64,56 @@ function diff_df(df1::DataFrame, df2::DataFrame; timecol::Symbol = :DateTime)
     return hcat(DataFrame(timecol => df1[!, timecol]), numeric_diff)
 end
 
+function get_map_from_df(df::DataFrame, col1::Symbol, col2::Symbol)
+    """
+    Create a mapping from values in col1 to values in col2.
+    
+    # Arguments
+    - `df::DataFrame`: DataFrame containing the columns
+    - `col1::Symbol`: Column name to use as keys
+    - `col2::Symbol`: Column name to use as values
+    
+    # Returns
+    - `OrderedDict`: Dictionary mapping col1 values to col2 values
+    
+    # Example
+    ```julia
+    bus_to_area = get_map_from_df(data["bus"], :id_bus, :id_area)
+    gen_to_bus = get_map_from_df(data["generator"], :id_gen, :id_bus)
+    ```
+    """
+    return OrderedDict(
+        row[col1] => row[col2]
+        for row in eachrow(df[!, [col1, col2]])
+    )
+end
+
+function get_inverse_map(forward_map::OrderedDict{K, V}) where {K, V}
+    """
+    Create an inverse mapping that groups keys by their values.
+    
+    # Arguments
+    - `forward_map::OrderedDict{K, V}`: Dictionary mapping keys to values
+    
+    # Returns
+    - `OrderedDict{V, Vector{K}}`: Dictionary mapping values to vectors of keys
+    
+    # Example
+    ```julia
+    gen_to_bus = get_gen_to_bus(data["generator"])
+    bus_to_gen = get_inverse_map(gen_to_bus)
+    ```
+    """
+    inverse_map = OrderedDict{V, Vector{K}}()
+    for (key, val) in forward_map
+        if !haskey(inverse_map, val)
+            inverse_map[val] = K[]
+        end
+        push!(inverse_map[val], key)
+    end
+    return inverse_map
+end
+
 function get_gen_to_bus(df_generator::DataFrame)
     """
     Create a mapping from generator ID to bus ID.
@@ -74,10 +124,7 @@ function get_gen_to_bus(df_generator::DataFrame)
     # Returns
     - `OrderedDict{Int64, Int64}`: Dictionary mapping generator IDs to bus IDs
     """
-    return OrderedDict(
-        row.id_gen => row.id_bus
-        for row in eachrow(df_generator[!, [:id_gen, :id_bus]])
-    )
+    return get_map_from_df(df_generator, :id_gen, :id_bus)
 end
 
 function get_bus_to_gen(gen_to_bus::OrderedDict{Int64, Int64})
@@ -90,14 +137,7 @@ function get_bus_to_gen(gen_to_bus::OrderedDict{Int64, Int64})
     # Returns
     - `OrderedDict{Int64, Vector{Int64}}`: Dictionary mapping bus IDs to vectors of generator IDs
     """
-    bus_to_gen = OrderedDict{Int64, Vector{Int64}}()
-    for (gen, bus) in gen_to_bus
-        if !haskey(bus_to_gen, bus)
-            bus_to_gen[bus] = Int64[]
-        end
-        push!(bus_to_gen[bus], gen)
-    end
-    return bus_to_gen
+    return get_inverse_map(gen_to_bus)
 end
 
 function get_col_to_bus(data_cols::Vector{String}, com_to_bus::OrderedDict{Int64, Int64})
@@ -131,14 +171,7 @@ function get_bus_to_col(col_to_bus::OrderedDict{String, Int64})
     # Returns
     - `OrderedDict{Int64, Vector{String}}`: Dictionary mapping bus IDs to vectors of column names
     """
-    bus_to_col = OrderedDict{Int64, Vector{String}}()
-    for (col, bus) in col_to_bus
-        if !haskey(bus_to_col, bus)
-            bus_to_col[bus] = String[]
-        end
-        push!(bus_to_col[bus], col)
-    end
-    return bus_to_col
+    return get_inverse_map(col_to_bus)
 end
 
 function get_component_columns(df::DataFrame; timecol::Symbol = :DateTime)

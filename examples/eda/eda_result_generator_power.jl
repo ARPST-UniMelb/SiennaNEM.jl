@@ -16,8 +16,8 @@ df_gen_pg =  hcat(
     [select(df, Not(timecol)) for df in df_gen_pg_list[2:end]]...
 )
 data_cols = get_component_columns(df_gen_pg; timecol=timecol)
-gen_to_bus = get_gen_to_bus(data["generator"])  # use gen_id
-col_to_bus = get_col_to_bus(data_cols, gen_to_bus)  # use gen_id + unit_id
+gen_to_bus = get_gen_to_bus(data["generator"])  # use id_gen
+col_to_bus = get_col_to_bus(data_cols, gen_to_bus)  # use id_gen + id_unit
 bus_to_col = get_bus_to_col(col_to_bus)  # map bus to columns
 
 # Sum columns for each bus
@@ -36,23 +36,23 @@ gen_to_pfrmax = Dict(row.id_gen => row.pfrmax for row in eachrow(data["generator
 gen_to_unit = OrderedDict{Int64, Vector{Int64}}()
 for col in get_component_columns(df_gen_pg_thermal; timecol=timecol)
     parts = split(col, "_")
-    gen_id = parse(Int, parts[1])
-    unit_id = parse(Int, parts[2])
+    id_gen = parse(Int, parts[1])
+    id_unit = parse(Int, parts[2])
     
-    if !haskey(gen_to_unit, gen_id)
-        gen_to_unit[gen_id] = Int64[]
+    if !haskey(gen_to_unit, id_gen)
+        gen_to_unit[id_gen] = Int64[]
     end
-    push!(gen_to_unit[gen_id], unit_id)
+    push!(gen_to_unit[id_gen], id_unit)
 end
 
 # Update data["generator"] with extended version
 data["generator_extended"] = extend_generator_data(data["generator"])
 gen_unit_to_pmax = Dict(
-    row.gen_unit_id => row.pmax 
+    row.id_gen_unit => row.pmax 
     for row in eachrow(data["generator_extended"])
 )
 gen_unit_to_pfrmax = Dict(
-    row.gen_unit_id => row.pfrmax 
+    row.id_gen_unit => row.pfrmax 
     for row in eachrow(data["generator_extended"])
 )
 

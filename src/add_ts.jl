@@ -3,15 +3,15 @@ function clean_ts_data!(data::Dict{String,Any})
     df_generator_ts = data["generator_pmax_ts"]
 
     # NOTE: remove missing due to id_gen == 78
-    unique_gen_id_ts = unique(df_generator_ts[:, :id_gen]) 
-    df_generator_ts_unique_gen_id = DataFrame(id_gen=unique_gen_id_ts)
-    df_generator_ts_unique_gen_id = leftjoin(
-        df_generator_ts_unique_gen_id,
+    unique_id_gen_ts = unique(df_generator_ts[:, :id_gen]) 
+    df_generator_ts_unique_id_gen = DataFrame(id_gen=unique_id_gen_ts)
+    df_generator_ts_unique_id_gen = leftjoin(
+        df_generator_ts_unique_id_gen,
         df_generator[:, [:id_gen, :name, :tech, :DataType]], on=:id_gen => :id_gen
     )
-    df_generator_ts_unique_gen_id = dropmissing(df_generator_ts_unique_gen_id, :name)
-    unique_gen_id_ts = df_generator_ts_unique_gen_id[:, :id_gen]
-    df_generator_ts = filter(row -> row.id_gen in unique_gen_id_ts, df_generator_ts)
+    df_generator_ts_unique_id_gen = dropmissing(df_generator_ts_unique_id_gen, :name)
+    unique_id_gen_ts = df_generator_ts_unique_id_gen[:, :id_gen]
+    df_generator_ts = filter(row -> row.id_gen in unique_id_gen_ts, df_generator_ts)
     data["generator_pmax_ts"] = df_generator_ts
 end
 

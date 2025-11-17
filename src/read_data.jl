@@ -153,15 +153,15 @@ function update_system_data_bound!(data::Dict{String,Any})
     df_line[!, "tmin"] = Matrix(data["line_tmin_tsf"][!, Not(:date)])[end, :]
 end
 
-# Extend data["generator"] with unit_id and gen_unit_id columns
+# Extend data["generator"] with id_unit and id_gen_unit columns
 function extend_generator_data(df::DataFrame)
     return vcat([
         let
             n_units = row.n
-            gen_id = row.id_gen
+            id_gen = row.id_gen
             df_temp = DataFrame(fill(NamedTuple(row), n_units))
-            df_temp.unit_id = 1:n_units
-            df_temp.gen_unit_id = ["$(gen_id)_$(i)" for i in 1:n_units]
+            df_temp.id_unit = 1:n_units
+            df_temp.id_gen_unit = ["$(id_gen)_$(i)" for i in 1:n_units]
             df_temp
         end
         for row in eachrow(df)
