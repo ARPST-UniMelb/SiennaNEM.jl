@@ -91,11 +91,11 @@ if !isdefined(Main, :tech_to_fuel)
 end
 
 if !isdefined(Main, :area_to_name)
-    const area_to_name = Dict(
-        "1" => "QLD",
-        "2" => "NSW",
-        "3" => "VIC",
-        "4" => "TAS",
-        "5" => "SA",
+    const area_to_name = OrderedDict(
+        1 => "QLD",
+        2 => "NSW",
+        3 => "VIC",
+        4 => "TAS",
+        5 => "SA",
     )
 end
