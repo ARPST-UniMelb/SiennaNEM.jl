@@ -190,4 +190,30 @@ function add_area_df!(data)
     data["area"].name = [area_to_name[id] for id in data["area"].id_area]
     data["area"].peak_active_power .= 0.0
     data["area"].peak_reactive_power .= 0.0
+
+    area_to_max_pmax = get_group_max(data["generator"], :id_area, :pmax)
+    data["area"].max_pmax = [area_to_max_pmax[id] for id in data["area"].id_area]
+end
+
+function get_group_max(df::DataFrame, group_col::Symbol, value_col::Symbol)
+    """
+    Get maximum value for each group.
+    
+    # Arguments
+    - `df::DataFrame`: Input DataFrame
+    - `group_col::Symbol`: Column to group by (e.g., :id_area, :id_bus)
+    - `value_col::Symbol`: Column to aggregate (e.g., :pmax, :capacity)
+    
+    # Returns
+    - `Dict`: Dictionary mapping group IDs to maximum values
+    
+    # Examples
+    ```julia
+    area_to_max_pmax = get_group_max(data["generator"], :id_area, :pmax)
+    bus_to_max_pmax = get_group_max(data["generator"], :id_bus, :capacity)
+    area_to_max_emax = get_group_max(data["storage"], :id_area, :emax)
+    ```
+    """
+    df_agg = combine(groupby(df, group_col), value_col => maximum => :max_value)
+    Dict(row[group_col] => row.max_value for row in eachrow(df_agg))
 end
