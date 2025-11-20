@@ -21,6 +21,7 @@ end
 
 function create_system!(data)
     df_bus = data["bus"]
+    df_area = data["area"]
     df_generator = data["generator"]
     df_line = data["line"]
     df_demand = data["demand"]
@@ -30,18 +31,27 @@ function create_system!(data)
     sys = PSY.System(baseMVA)
     set_units_base_system!(sys, "SYSTEM_BASE") # for p.u.
 
-    # Make buses dict
+    # Make area dict
     areas = Dict{Int,PSY.Area}()
-    buses = Dict{Int,PSY.ACBus}()
-    for row in eachrow(df_bus)
-        id = row.id_bus
-        name = string(id)
+    for row in eachrow(df_area)
+        id = row.id_area
+        name = row.name
         area = PSY.Area(
             name=name,
             peak_active_power=0.0,
             peak_reactive_power=0.0,
             load_response=0.0,  # support load-frequency damping
         )
+        areas[id] = area
+        add_component!(sys, area)
+    end
+
+    # Make buses dict
+    # TODO: add LoadZone
+    buses = Dict{Int,PSY.ACBus}()
+    for row in eachrow(df_bus)
+        id = row.id_bus
+        name = row.name
         bus = PSY.ACBus(;
             number=id,
             name=name,
@@ -50,15 +60,13 @@ function create_system!(data)
             magnitude=1.0,
             voltage_limits=(min=0.9, max=1.05),
             base_voltage=220.0,
-            area=area,
+            area=areas[row.id_area],
             ext=Dict(
-                "latitude"=>row.latitude,
-                "longitude"=>row.longitude,
+                "latitude" => row.latitude,
+                "longitude" => row.longitude,
             ),
         )
-        areas[id] = area
         buses[id] = bus
-        add_component!(sys, area)
         add_component!(sys, bus)
     end
 
@@ -94,7 +102,7 @@ function create_system!(data)
             x=row.x,
             b=(from=0.0, to=0.0),
             rating=row.capacity / baseMVA,
-            angle_limits=(min=-pi/2, max=pi/2),
+            angle_limits=(min=-pi / 2, max=pi / 2),
         )
         lines[id] = line
         add_component!(sys, line)
@@ -139,6 +147,7 @@ function create_system!(data)
     #   1. RenewableDispatch and RenewableNonDispatch is free (cvar == 0)
     #   2. ThermalStandard only single linear curve
 
+    # TODO: to improve speed, detect and operate !ENV_HYDRORES_AS_THERMAL outside the loop
     for row in eachrow(df_generator)
         if row.DataType === missing || row.capacity == 0
             # NOTE:
@@ -172,15 +181,17 @@ function create_system!(data)
                         variable=CostCurve(;  # Sienna support FuelCurve with fuel_cost
                             value_curve=LinearCurve(row.cvar),
                         ),
-                        fixed = 0.0,
-                        start_up = 0.0,
-                        shut_down = 0.0,
+                        fixed=0.0,
+                        start_up=row.start_up_cost,
+                        shut_down=row.shut_down_cost,
                     ),
                     base_power=row.pmax, # MVA
-                    time_limits=nothing, # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
+                    time_limits=(up=row.up_time, down=row.down_time), # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
                     must_run=false,
                     prime_mover_type=row.PrimeMovers,
                     fuel=row.ThermalFuels,
+                    # services=,
+                    # time_at_status=,
                 )
                 generators[id][i] = gen
                 thermal_generators[id][i] = gen
@@ -204,7 +215,7 @@ function create_system!(data)
                         ramp_limits=(up=row.rdw / row.pmax, down=row.rup / row.pmax),
                         operation_cost=HydroGenerationCost(nothing),
                         base_power=row.pmax, # MVA
-                        time_limits=nothing, # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
+                        time_limits=(up=row.up_time, down=row.down_time), # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
                         prime_mover_type=row.PrimeMovers,
                     )
                     generators[id][i] = gen
@@ -230,12 +241,12 @@ function create_system!(data)
                             variable=CostCurve(;  # Sienna support FuelCurve with fuel_cost
                                 value_curve=LinearCurve(row.cvar),
                             ),
-                            fixed = 0.0,
-                            start_up = 0.0,
-                            shut_down = 0.0,
+                            fixed=0.0,
+                            start_up=0.0,
+                            shut_down=0.0,
                         ),
                         base_power=row.pmax, # MVA
-                        time_limits=nothing, # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
+                        time_limits=(up=row.up_time, down=row.down_time), # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
                         must_run=false,
                         prime_mover_type=PrimeMovers.GT,  # Gas Turbine to show fast ramp
                         fuel=ThermalFuels.OTHER,  # other, using water
@@ -269,12 +280,12 @@ function create_system!(data)
                             variable=CostCurve(;  # Sienna support FuelCurve with fuel_cost
                                 value_curve=LinearCurve(row.cvar),
                             ),
-                            fixed = 0.0,
-                            start_up = 0.0,
-                            shut_down = 0.0,
+                            fixed=0.0,
+                            start_up=0.0,
+                            shut_down=0.0,
                         ),
                         base_power=row.pmax, # MVA
-                        time_limits=nothing, # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
+                        time_limits=(up=row.up_time, down=row.down_time), # MUT MDT, if in Hours: (up = 8.0, down = 8.0)
                         must_run=false,
                         prime_mover_type=PrimeMovers.GT,  # Gas Turbine to show fast ramp
                         fuel=ThermalFuels.OTHER,  # other, using water
@@ -423,14 +434,14 @@ function create_system!(data)
         end
 
         storage_capacity = row.emax / row.capacity
-        initial_storage_capacity_level = row.eini/100
+        initial_storage_capacity_level = row.eini / 100
         input_active_power_limits_max = row.lmax / row.capacity
         output_active_power_limits_max = row.pmax / row.capacity
-        storage_target = row.eini/100
+        storage_target = row.eini / 100
 
         id = row.id_ess
         if row.DataType == EnergyReservoirStorage
-            storage_level_limits_min = row.emin/100
+            storage_level_limits_min = row.emin / 100
             storages[id] = Dict{Int,PSY.EnergyReservoirStorage}()
             battery_storages[id] = Dict{Int,PSY.EnergyReservoirStorage}()
             for i in 1:row.n
@@ -474,7 +485,7 @@ function create_system!(data)
 
             if !ENV_HYDROPUMP_AS_BATTERY
                 # NOTE: reactive_power_limits_max is used for reactive_power_limits_pump and reactive_power_limits
-                reactive_power_limits_max = row.capacity * sqrt((1/row.powerfactor^2) - 1)
+                reactive_power_limits_max = row.capacity * sqrt((1 / row.powerfactor^2) - 1)
                 storages[id] = Dict{Int,PSY.HydroPumpedStorage}()
                 hydro_storages[id] = Dict{Int,PSY.HydroPumpedStorage}()
                 for i in 1:row.n
@@ -500,8 +511,8 @@ function create_system!(data)
                         storage_capacity=(up=storage_capacity, down=storage_capacity),
                         inflow=0.0,
                         outflow=0.0,
-                        initial_storage=(up=initial_storage_capacity_level, down=1-initial_storage_capacity_level),
-                        storage_target=(up=initial_storage_capacity_level, down=1-initial_storage_capacity_level),
+                        initial_storage=(up=initial_storage_capacity_level, down=1 - initial_storage_capacity_level),
+                        storage_target=(up=initial_storage_capacity_level, down=1 - initial_storage_capacity_level),
                         operation_cost=StorageCost(nothing),  # only support based MW charge and discharge
                         pump_efficiency=row.ch_eff,
                         conversion_factor=row.dch_eff,
@@ -511,7 +522,7 @@ function create_system!(data)
                     add_component!(sys, storage)
                 end
             else
-                storage_level_limits_min = row.emin/100
+                storage_level_limits_min = row.emin / 100
                 storages[id] = Dict{Int,PSY.EnergyReservoirStorage}()
                 hydro_storages[id] = Dict{Int,PSY.EnergyReservoirStorage}()
                 for i in 1:row.n
@@ -573,6 +584,7 @@ function create_system!(data)
         "renewable_dispatch_generators" => renewable_dispatch_generators,
         "renewable_nondispatch_generators" => renewable_nondispatch_generators,
         "hydro_dispatch_generators" => hydro_dispatch_generators,
+        "hydro_energyreservoir_generators" => hydro_energyreservoir_generators,
         "demands" => demands,
         "storages" => storages,
         "battery_storages" => battery_storages,

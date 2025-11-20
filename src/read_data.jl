@@ -19,12 +19,29 @@ function read_system_data(data_dir::AbstractString)
         data[k] = df
     end
 
+    # add columns
+    bus_to_area = get_map_from_df(data["bus"], :id_bus, :id_area)
+
     add_fuel_col!(data["generator"])
     add_primemover_col!(data["generator"])
     add_datatype_col!(data["generator"])
+    add_id_area_col!(data["generator"], bus_to_area)
 
     add_primemover_col!(data["storage"])
     add_datatype_col!(data["storage"])
+    add_id_area_col!(data["storage"], bus_to_area)
+
+    # add dataframes
+    add_area_df!(data)
+    add_generator_extended_df!(data)
+
+    # NOTE:
+    #   add_maps! is optional and is used in post-processing, except for
+    # bus_to_area. Should we store the map since read data?
+    # 
+    # add maps
+    # add_maps!(data)
+
     return data
 end
 
@@ -64,12 +81,20 @@ function add_datatype_col!(df)
     transform!(df, :tech => ByRow(t -> tech_to_datatype[t]) => :DataType)
 end
 
+function add_id_area_col!(df, bus_to_area)
+    transform!(df, :id_bus => ByRow(b -> bus_to_area[b]) => :id_area)
+end
+
 function add_tsf_data!(
     data::Dict{String,Any};
     scenario_name=1,
     date_start=nothing,
     date_end=nothing,
 )
+    # NOTE:
+    # This function create and add time series forward-filled DataFrames to `data` Dict.
+    # This is required because the status data from the raw data is not in full format.
+
     # TODO:
     #   1. Request data["generator_pmax_ts"] to change only the capacity, not trace of RE
     #   2. Implement DER
@@ -146,4 +171,82 @@ function update_system_data_bound!(data::Dict{String,Any})
 
     df_line[!, "tmax"] = Matrix(data["line_tmax_tsf"][!, Not(:date)])[end, :]
     df_line[!, "tmin"] = Matrix(data["line_tmin_tsf"][!, Not(:date)])[end, :]
+end
+
+function extend_generator_data(df::DataFrame)
+    """
+    Extend generator DataFrame by creating individual units for each generator.
+    Each generator with `n` units will be expanded into `n` rows, each representing
+    a single unit with its own `id_unit` and `id_gen_unit`.
+    """
+    return vcat([
+        let
+            n_units = row.n
+            id_gen = row.id_gen
+            df_temp = DataFrame(fill(NamedTuple(row), n_units))
+            df_temp.id_unit = 1:n_units
+            df_temp.id_gen_unit = ["$(id_gen)_$(i)" for i in 1:n_units]
+            df_temp
+        end
+        for row in eachrow(df)
+    ]...)
+end
+
+function add_area_df!(data)
+    # TODO: properly calculate peak_active_power and peak_reactive_power columns
+    data["area"] = unique(data["bus"][!, [:id_area]])
+    data["area"].name = [area_to_name[id] for id in data["area"].id_area]
+    data["area"].peak_active_power .= 0.0
+    data["area"].peak_reactive_power .= 0.0
+
+    area_to_max_pmax = get_group_max(data["generator"], :id_area, :pmax)
+    data["area"].max_pmax = [area_to_max_pmax[id] for id in data["area"].id_area]
+end
+
+function add_generator_extended_df!(data)
+    data["generator_extended"] = extend_generator_data(data["generator"])
+end
+
+function add_maps!(data)
+    bus_to_area = get_map_from_df(data["bus"], :id_bus, :id_area)
+    gen_unit_to_pmax = get_map_from_df(data["generator_extended"], :id_gen_unit, :pmax)
+    gen_unit_to_pfrmax = get_map_from_df(data["generator_extended"], :id_gen_unit, :pfrmax)
+    gen_to_bus = get_map_from_df(data["generator"], :id_gen, :id_bus)
+    gen_unit_to_gen = get_map_from_df(data["generator_extended"], :id_gen_unit, :id_gen)
+
+    area_to_bus = get_grouped_map_from_df(data["bus"], :id_area, :id_bus)
+    gen_to_units = get_grouped_map_from_df(data["generator_extended"], :id_gen, :id_unit)
+
+    data["map"] = Dict(
+        "bus_to_area" => bus_to_area,
+        "gen_unit_to_pmax" => gen_unit_to_pmax,
+        "gen_unit_to_pfrmax" => gen_unit_to_pfrmax,
+        "gen_to_bus" => gen_to_bus,
+        "gen_unit_to_gen" => gen_unit_to_gen,
+        "area_to_bus" => area_to_bus,
+        "gen_to_units" => gen_to_units,
+    )
+end
+
+function get_group_max(df::DataFrame, group_col::Symbol, value_col::Symbol)
+    """
+    Get maximum value for each group.
+
+    # Arguments
+    - `df::DataFrame`: Input DataFrame
+    - `group_col::Symbol`: Column to group by (e.g., :id_area, :id_bus)
+    - `value_col::Symbol`: Column to aggregate (e.g., :pmax, :capacity)
+
+    # Returns
+    - `Dict`: Dictionary mapping group IDs to maximum values
+
+    # Examples
+    ```julia
+    area_to_max_pmax = get_group_max(data["generator"], :id_area, :pmax)
+    bus_to_max_pmax = get_group_max(data["generator"], :id_bus, :capacity)
+    area_to_max_emax = get_group_max(data["storage"], :id_area, :emax)
+    ```
+    """
+    df_agg = combine(groupby(df, group_col), value_col => maximum => :max_value)
+    Dict(row[group_col] => row.max_value for row in eachrow(df_agg))
 end
