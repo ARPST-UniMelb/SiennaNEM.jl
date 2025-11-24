@@ -147,27 +147,8 @@ function add_st!(
     add_time_series!(sys, values(instances), sts);
 end
 
-function create_time_slices(
-    df::DataFrame;
-    initial_time::DateTime,
-    horizon::Period,
-    window_shift::Period,
-)
-    max_date = maximum(df.date)
-    
-    slices = OrderedDict{DateTime, DataFrame}()
-    current_time = initial_time
-    
-    while current_time < max_date
-        slice_end = current_time + horizon
-        slices[current_time] = filter(row -> current_time <= row.date < slice_end, df)
-        current_time += window_shift
-    end
-    
-    return slices
-end
 
-function create_time_slices_iterator(
+function get_time_slices_iterator(
     df::DataFrame;
     initial_time::DateTime,
     horizon::Period,

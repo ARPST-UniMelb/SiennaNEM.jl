@@ -6,7 +6,7 @@ using PowerSimulations
 using HiGHS
 
 system_data_dir = "data/nem12/arrow"
-schedule_name = "schedule-2028"
+schedule_name = "schedule-1w"
 ts_data_dir = joinpath(system_data_dir, schedule_name)
 scenario_name = 1
 

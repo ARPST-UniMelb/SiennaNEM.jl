@@ -18,13 +18,13 @@ initial_time = minimum(data["demand_l_ts"][!, "date"])
 #   This function is too heavy, maybe don't slice all at once.
 # TODO:
 #   Benchmark on single week, compare with slicing on the fly.
-demand_time_slices = create_time_slices(
+demand_time_slices = get_time_slices_iterator(
     data["demand_l_ts"],
     initial_time = initial_time,
     horizon = horizon,
     window_shift = window_shift,
 )
-generator_time_slices = create_time_slices(
+generator_time_slices = get_time_slices_iterator(
     data["generator_pmax_ts"],
     initial_time = initial_time,
     horizon = horizon,
@@ -34,11 +34,7 @@ generator_time_slices = create_time_slices(
 # Loop through each time slice
 res_dict = Dict{DateTime, OptimizationProblemResults}()
 clear_time_series!(sys)  # This command is very time consuming, need a refactor
-for time_slice in collect(keys(demand_time_slices))
-    println(time_slice)
-    df_demand_ts = demand_time_slices[time_slice]
-    df_generator_ts = generator_time_slices[time_slice]
-
+for ((time_slice, df_demand_ts), (_, df_generator_ts)) in zip(demand_time_slices, generator_time_slices)
     # TODO: use Deterministic directly to avoid removing and adding
     add_ts!(
         sys,
@@ -63,9 +59,6 @@ for time_slice in collect(keys(demand_time_slices))
     build!(problem; output_dir=mktempdir())
     solve!(problem)
     res_dict[time_slice] = OptimizationProblemResults(problem)
-
-    objective_value = get_objective_value(res)
-    println("Time slice: $time_slice, Objective value: $objective_value")
 
     clear_time_series!(sys)  # This command is very time consuming, need a refactor
 end
