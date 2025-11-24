@@ -1,4 +1,5 @@
 using Dates
+using PowerSystems
 
 # NOTE:
 #   This script require `uc_build_problem.jl` to be run first to setup the
@@ -13,23 +14,28 @@ window_shift = Hour(24)
 initial_time = minimum(data["demand_l_ts"][!, "date"])
 
 # Create time series slices data
+# NOTE:
+#   This function is too heavy, maybe don't slice all at once.
+# TODO:
+#   Benchmark on single week, compare with slicing on the fly.
 demand_time_slices = create_time_slices(
     data["demand_l_ts"],
-    initial_time = DateTime("2025-01-07T00:00:00"),
+    initial_time = initial_time,
     horizon = horizon,
     window_shift = window_shift,
 )
 generator_time_slices = create_time_slices(
     data["generator_pmax_ts"],
-    initial_time = DateTime("2025-01-07T00:00:00"),
+    initial_time = initial_time,
     horizon = horizon,
     window_shift = window_shift,
 )
 
 # Loop through each time slice
 res_dict = Dict{DateTime, OptimizationProblemResults}()
-clear_time_series!(sys)
+clear_time_series!(sys)  # This command is very time consuming, need a refactor
 for time_slice in collect(keys(demand_time_slices))
+    println(time_slice)
     df_demand_ts = demand_time_slices[time_slice]
     df_generator_ts = generator_time_slices[time_slice]
 
@@ -61,5 +67,5 @@ for time_slice in collect(keys(demand_time_slices))
     objective_value = get_objective_value(res)
     println("Time slice: $time_slice, Objective value: $objective_value")
 
-    clear_time_series!(sys)
+    clear_time_series!(sys)  # This command is very time consuming, need a refactor
 end
