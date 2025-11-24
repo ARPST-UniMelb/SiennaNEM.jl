@@ -160,14 +160,29 @@ function create_time_slices(
     
     while current_time < max_date
         slice_end = current_time + horizon
-        df_slice = filter(row -> current_time <= row.date < slice_end, df)
-        
-        if !isempty(df_slice)
-            slices[current_time] = df_slice
-        end
-        
+        slices[current_time] = filter(row -> current_time <= row.date < slice_end, df)
         current_time += window_shift
     end
     
     return slices
+end
+
+function create_time_slices_iterator(
+    df::DataFrame;
+    initial_time::DateTime,
+    horizon::Period,
+    window_shift::Period,
+)
+    max_date = maximum(df.date)
+    
+    return Channel() do ch
+        current_time = initial_time
+        
+        while current_time < max_date
+            slice_end = current_time + horizon
+            put!(ch, (current_time, filter(row -> current_time <= row.date < slice_end, df)))
+            
+            current_time += window_shift
+        end
+    end
 end
