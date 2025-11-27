@@ -48,31 +48,29 @@ function add_ts!(
 )
     # NOTE: This is just a wrapper to use data instead of df
 
-    # Get DataFrames
-    df_demand_ts = data["demand_l_ts"]
-    df_generator_ts = data["generator_pmax_ts"]
-    renewable_dispatch_generators = data["components"]["renewable_dispatch_generators"]
-    renewable_nondispatch_generators = data["components"]["renewable_nondispatch_generators"]
-    demands = data["components"]["demands"]
-
     # Get specific scenario
-    df_demand = filter_value_from_df(data["demand_l_ts"], :scenario, scenario_name)
-    df_generator = filter_value_from_df(data["generator_pmax_ts"], :scenario, scenario_name)
+    df_demand_ts = filter_value_from_df(data["demand_l_ts"], :scenario, scenario_name)
+    df_generator_ts = filter_value_from_df(data["generator_pmax_ts"], :scenario, scenario_name)
 
     # Get specific time slice
     if start_date !== nothing
-        slice_end = start_date + horizon
-        df_demand = get_time_slice(df_demand_ts, initial_time=start_date, slice_end=slice_end)
-        df_generator = get_time_slice(df_generator_ts, initial_time=start_date, slice_end=slice_end)
+        if horizon === nothing
+            slice_end = maximum(df_demand_ts[!, :date])
+        else
+            slice_end = start_date + horizon
+        end
+
+        df_demand_ts = get_time_slice(df_demand_ts, initial_time=start_date, slice_end=slice_end)
+        df_generator_ts = get_time_slice(df_generator_ts, initial_time=start_date, slice_end=slice_end)
     end
 
     add_ts!(
         sys,
-        df_demand,
-        df_generator,
-        demands,
-        renewable_dispatch_generators,
-        renewable_nondispatch_generators;
+        df_demand_ts,
+        df_generator_ts,
+        data["components"]["demands"],
+        data["components"]["renewable_dispatch_generators"],
+        data["components"]["renewable_nondispatch_generators"];
         horizon=horizon,
         interval=interval,
     )
@@ -80,8 +78,8 @@ end
 
 function add_ts!(
     sys,
-    df_demand,
-    df_generator,
+    df_demand_ts,
+    df_generator_ts,
     demands,
     renewable_dispatch_generators,
     renewable_nondispatch_generators;
@@ -92,13 +90,13 @@ function add_ts!(
     #   This is the main function to add time series to the system.
     #   Slicing the data should be done outside this function.
     #   This function also didn't use groupbyd, the data should be already single scenario_name.
-    #   The format of df_demand and df_generator should follow PISP.jl format:
-    #       df_demand: [:id_dem, :date, :value]
-    #       df_generator: [:id_gen, :date, :value]
+    #   The format of df_demand_ts and df_generator_ts should follow PISP.jl format:
+    #       df_demand_ts: [:id_dem, :date, :value]
+    #       df_generator_ts: [:id_gen, :date, :value]
 
     # Add demand time series
-    grouped_demand = groupbyd(df_demand, :id_dem)
-    grouped_generator = groupbyd(df_generator, :id_gen)
+    grouped_demand = groupbyd(df_demand_ts, :id_dem)
+    grouped_generator = groupbyd(df_generator_ts, :id_gen)
     add_sts!(sys, demands, grouped_demand, :id_dem)
     add_sts!(sys, renewable_dispatch_generators, grouped_generator, :id_gen)
     add_sts!(sys, renewable_nondispatch_generators, grouped_generator, :id_gen)
@@ -115,6 +113,12 @@ function add_ts!(
         end
     end
 
+    # TODO:
+    # 1. Check and learn how horizon and interval work in PowerSimulations.jl
+    # 2. Which one does transform_single_time_series! use?
+    #   slice_end = start_date + horizon
+    #   slice_end = start_date + horizon - interval
+    #   slice_end = start_date + horizon + interval
     transform_single_time_series!(
         sys,
         horizon,
@@ -128,9 +132,9 @@ end
 function add_sts!(
     sys::PSY.System,
     instances::Dict{Int, T},
-    dfs::Dict{Int, S},
+    dfs,
     col::Symbol,
-) where {T <: PSY.PowerLoad, S <: SubDataFrame}
+) where {T <: PSY.PowerLoad}
     # NOTE: Dict{Int, T}, used for demands
     units_base_system = get_units_base(sys)
     set_units_base_system!(sys, "NATURAL_UNITS")
@@ -161,9 +165,9 @@ end
 function add_sts!(
     sys::PSY.System,
     nested_instances::Dict{Int,Dict{Int,T}},
-    dfs::Dict{Int, S},
+    dfs,
     col::Symbol,
-) where {T <: PSY.RenewableGen, S <: SubDataFrame}
+) where {T <: PSY.RenewableGen}
     # NOTE: Dict{Int,Dict{Int,T}}, used for generators
     units_base_system = get_units_base(sys)
     set_units_base_system!(sys, "NATURAL_UNITS")
