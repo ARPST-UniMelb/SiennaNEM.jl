@@ -21,7 +21,7 @@ solver = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 # will cause the last `(horizon - schedule_horizon)` hours of time series data
 # not be solved.
 
-# input variables
+# input variables parameters
 system_data_dir = "data/nem12/arrow"
 schedule_name = "schedule-1w"
 ts_data_dir = joinpath(system_data_dir, schedule_name)
@@ -29,22 +29,8 @@ scenario_name = 1
 horizon = Hour(24)
 interval = Hour(1)
 
-# wrap this into a function
-
-function get_system_data(system_data_dir, ts_data_dir; scenario_name=1)
-    # TODO:
-    #   Refactor this so that we don't need `scenario_name` in building the
-    # system data here.
-    data = read_system_data(system_data_dir)
-    read_ts_data!(data, ts_data_dir)
-    add_tsf_data!(data, scenario_name=scenario_name)
-    update_system_data_bound!(data)
-    clean_ts_data!(data)
-    return data
-end
-
 # data and system
-data = get_system_data(system_data_dir, ts_data_dir)
+data = get_data(system_data_dir, ts_data_dir)
 sys = create_system!(data)
 add_ts!(
     sys, data;

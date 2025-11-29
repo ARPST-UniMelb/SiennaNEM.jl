@@ -25,8 +25,8 @@ const ENV_HYDRORES_AS_THERMAL = true
 const ENV_HYDROPUMP_AS_BATTERY = true
 
 # Exported functions and constants
-export read_system_data, read_ts_data!, preprocess_date!, update_system_data_bound!
-export add_area_df!, add_maps!
+export get_data, read_system_data, read_ts_data!, preprocess_date!
+export update_system_data_bound!, add_area_df!, add_maps!
 export add_fuel_col!, add_primemover_col!, add_datatype_col!, add_id_area_col!
 export extend_generator_data, get_group_max
 export clean_ts_data!

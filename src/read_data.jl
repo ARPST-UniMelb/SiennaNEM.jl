@@ -1,3 +1,15 @@
+function get_data(system_data_dir, ts_data_dir; scenario_name=1)
+    # TODO:
+    #   Refactor this so that we don't need `scenario_name` in building the
+    # system data here.
+    data = read_system_data(system_data_dir)
+    read_ts_data!(data, ts_data_dir)
+    add_tsf_data!(data; scenario_name=scenario_name)
+    update_system_data_bound!(data)
+    clean_ts_data!(data)
+    return data
+end
+
 function read_system_data(data_dir::AbstractString)
     files = Dict(
         "bus" => "Bus",
