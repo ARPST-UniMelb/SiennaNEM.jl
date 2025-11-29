@@ -99,3 +99,18 @@ if !isdefined(Main, :area_to_name)
         5 => "SA",
     )
 end
+
+"""
+Handlers configuration for reading different result types from
+OptimizationProblemResults. Each tuple contains:
+(category_name, list_function, read_function)
+"""
+if !isdefined(Main, :optimization_result_handlers)
+    const optimization_result_handlers = [
+        ("expression", list_expression_names, read_expression),
+        ("aux_variable", list_aux_variable_names, read_aux_variable),
+        ("parameter", list_parameter_names, read_parameter),
+        ("variable", list_variable_names, read_variable),
+        ("dual", list_dual_names, read_dual),
+    ]
+end

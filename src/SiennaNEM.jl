@@ -3,9 +3,10 @@ module SiennaNEM
 using DataFrames, Dates, TimeSeries, OrderedCollections
 using CSV, Arrow
 using PlotlyJS
-using InfrastructureSystems, PowerSystems
+using InfrastructureSystems, PowerSimulations, PowerSystems
 
 const IS = InfrastructureSystems
+const PS = PowerSimulations
 const PSY = PowerSystems
 const DF = DataFrames
 
