@@ -1,5 +1,6 @@
 using Revise
 using SiennaNEM
+using Dates
 
 using PowerSimulations
 
@@ -26,8 +27,8 @@ system_data_dir = "data/nem12/arrow"
 schedule_name = "schedule-1w"
 ts_data_dir = joinpath(system_data_dir, schedule_name)
 scenario_name = 1
-horizon = Hour(24)
-interval = Hour(1)
+horizon = Hour(48)
+interval = Hour(24)
 
 # data and system
 data = SiennaNEM.get_data(system_data_dir, ts_data_dir)

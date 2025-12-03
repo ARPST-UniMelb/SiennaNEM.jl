@@ -1,162 +1,157 @@
 using Dates
 using PowerSystems
-import Logging: @info
+using PowerSimulations
 
 """
     run_decision_model(
         template::ProblemTemplate,
         sys::System;
-        schedule_horizon::Union{Period, Nothing}=nothing,
-        initial_time::Union{DateTime, Nothing}=nothing,
         kwargs...
     )
 
 Set up and solve a single unit commitment decision model.
-
-This function creates and solves a decision model for a single time window,
-returning the optimization results.
 
 # Arguments
 - `template::ProblemTemplate`: The problem template defining the UC formulation.
 - `sys::System`: The PowerSystems system object containing the network and time series data.
 
 # Keyword Arguments
-- `schedule_horizon::Union{Period, Nothing}=nothing`: Time horizon for the decision model.
-  Must be less than or equal to the horizon used in `add_ts!`. If `nothing`, automatically
-  detects from the system's forecast horizon.
-- `initial_time::Union{DateTime, Nothing}=nothing`: Starting time for the decision model window.
-  Must be aligned with `start_time + (k * interval)` from the time series data. If `nothing`,
-  uses the first available forecast initial time from the system.
 - `kwargs...`: Additional keyword arguments to pass to `DecisionModel` constructor
-  (e.g., `optimizer`, `warm_start`, `initial_conditions`, etc.)
+  (e.g., `optimizer`, `horizon`, `initial_time`, `warm_start`, etc.)
 
 # Returns
 - `OptimizationProblemResults`: The optimization results containing objective value,
   variable values, and other solution information.
 
-# Notes
+# Note
 - The function requires the system to be pre-built with time series data (see `uc_build_problem.jl`).
 - The `initial_time` must align with the time series data timestamps.
 - A temporary directory is created for problem output and automatically cleaned up.
 """
 function run_decision_model(
-    template::ProblemTemplate,
-    sys::System;
-    schedule_horizon::Union{Period, Nothing}=nothing,
-    initial_time::Union{DateTime, Nothing}=nothing,
-    kwargs...
+  template::ProblemTemplate,
+  sys::System;
+  kwargs...
 )
-    # NOTE: 
-    #   We don't need to sanitize `schedule_horizon` and `initial_time` here
-    # because `DecisionModel` constructor will handle that.
+  # Create and solve the decision model
+  problem = DecisionModel(
+    template, sys;
+    kwargs...
+  )
 
-    # Create and solve the decision model
-    problem = DecisionModel(
-        template, sys;
-        horizon=schedule_horizon,
-        initial_time=initial_time,
-        kwargs...
-    )
+  build!(problem; output_dir=mktempdir())
+  solve!(problem)
 
-    build!(problem; output_dir=mktempdir())
-    solve!(problem)
-    
-    return OptimizationProblemResults(problem)
+  return OptimizationProblemResults(problem)
 end
 
 """
     run_decision_model_loop(
         template::ProblemTemplate,
         sys::System;
-        schedule_horizon::Union{Period, Nothing}=nothing,
-        window_shift::Period=Hour(24),
-        minimum_initial_time::Union{DateTime, Nothing}=nothing,
-        maximum_initial_time::Union{DateTime, Nothing}=nothing,
-        kwargs...
+        simulation_name::Union{String, Nothing}=nothing,
+        simulation_folder::Union{String, Nothing}=nothing,
+        simulation_steps::Union{Int, Nothing}=nothing,
+        decision_model_kwargs::NamedTuple=(;),
+        simulation_kwargs::NamedTuple=(;),
     )
 
-Set up and solve multiple unit commitment decision models by iterating over time windows.
+Set up and solve multiple unit commitment decision models using PowerSimulations'
+`Simulation` infrastructure with moving horizon optimization.
 
-This function creates and solves a series of decision models, each covering a specified
-time horizon (schedule_horizon) with a rolling window approach. The window shifts forward
-by `window_shift` for each iteration.
+This function leverages PowerSimulations' `Simulation` and `InterProblemChronology()`
+to automatically handle:
+- Initial conditions propagation between windows (generator status, power, MUT/MDT, SoC)
+- Time window advancement based on system's forecast interval
+- Proper sequencing of optimization problems
 
 # Arguments
 - `template::ProblemTemplate`: The problem template defining the UC formulation.
 - `sys::System`: The PowerSystems system object containing the network and time series data.
+  Must be pre-built with time series using `add_ts!` with desired `horizon` and `interval`.
 
 # Keyword Arguments
-- `schedule_horizon::Union{Period, Nothing}=nothing`: Time horizon for each decision model.
-  Must be less than or equal to the horizon used in `add_ts!`. If `nothing`, automatically
-  detects from the system's forecast horizon.
-- `window_shift::Period=Hour(24)`: Time step between consecutive decision model windows.
-- `minimum_initial_time::Union{DateTime, Nothing}=nothing`: Starting time for the first window.
-  If `nothing`, uses the first available forecast initial time from the system.
-- `maximum_initial_time::Union{DateTime, Nothing}=nothing`: Ending time for the last window.
-  If `nothing`, uses the last available forecast initial time from the system.
-- `kwargs...`: Additional keyword arguments to pass to `DecisionModel` constructor.
+- `simulation_name::Union{String, Nothing}=nothing`: Name for the simulation and decision model.
+  If `nothing`, defaults to "DA-UC".
+- `simulation_folder::Union{String, Nothing}=nothing`: Directory to store simulation results.
+  If `nothing`, creates a temporary directory that is automatically cleaned up.
+- `simulation_steps::Union{Int, Nothing}=nothing`: Number of simulation steps to execute.
+  If `nothing`, auto-detects from system's forecast window count.
+- `decision_model_kwargs::NamedTuple=(;)`: Keyword arguments for `DecisionModel` constructor
+  (e.g., `optimizer`, `warm_start`, `initial_time`, etc.)
+- `simulation_kwargs::NamedTuple=(;)`: Keyword arguments for `Simulation` constructor
+  (e.g., `initial_time`, etc. Note: `steps` is handled by `simulation_steps` parameter)
 
 # Returns
-- `Dict{DateTime, OptimizationProblemResults}`: Dictionary mapping initial times to their
-  corresponding optimization results.
+- `SimulationResults`: PowerSimulations simulation results object containing all decision
+  problem results across all time windows. Use `get_decision_problem_results()` and
+  `read_realized_variables()` to access specific results.
 
 # Notes
-- The function requires the system to be pre-built with time series data (see `uc_build_problem.jl`).
-- If `schedule_horizon` is less than the horizon used in `add_ts!`, the last
-  `(horizon - schedule_horizon)` hours of time series data will not be solved.
-- Each iteration creates a temporary directory for problem output that is automatically cleaned up.
-- The function will stop before running out of time series data to avoid assertion errors.
+- The system's time series structure (horizon and interval from `add_ts!`) determines:
+  * Optimization window size (horizon)
+  * How far the window advances each step (interval, not resolution)
+- Initial conditions (P, status, MUT/MDT, SoC) automatically propagate between windows
+  via `InterProblemChronology()`.
+- Use `read_realized_variables()` to extract only committed decisions (first interval of each window).
 
-# TODO
-- Use Chronology, that is SimulationSequence.
-- Support passing storage last state of charge into initial state of charge on the next loop.
-- Support schedule_horizon wider than window_shift to have overlapping time slices.
+# See Also
+- PowerSimulations.jl documentation on Simulations and Chronologies
+- `run_decision_model()` for single-window optimization
 """
 function run_decision_model_loop(
-    template::ProblemTemplate,
-    sys::System;
-    schedule_horizon::Union{Period, Nothing}=nothing,
-    window_shift::Period=Hour(24),
-    minimum_initial_time::Union{DateTime, Nothing}=nothing,
-    maximum_initial_time::Union{DateTime, Nothing}=nothing,
-    verbose::Bool=false,
-    kwargs...
+  template::ProblemTemplate,
+  sys::System;
+  simulation_name::Union{String,Nothing}=nothing,
+  simulation_folder::Union{String,Nothing}=nothing,
+  simulation_steps::Union{Int,Nothing}=nothing,
+  decision_model_kwargs::NamedTuple=(;),
+  simulation_kwargs::NamedTuple=(;),
 )
-    # Determine the horizon
-    if schedule_horizon === nothing
-        schedule_horizon = InfrastructureSystems.get_forecast_horizon(sys.data)
-    end
 
-    # Set time range
-    if minimum_initial_time === nothing || maximum_initial_time === nothing
-        initial_times = collect(InfrastructureSystems.get_forecast_initial_times(sys.data))
-        if minimum_initial_time === nothing
-            minimum_initial_time = first(initial_times)
-        end
-        if maximum_initial_time === nothing
-            maximum_initial_time = last(initial_times)
-        end
-    end
+  if simulation_name === nothing
+    simulation_name = "DA-UC"
+  end
 
-    # Initialize results dictionary
-    res_dict = Dict{DateTime, OptimizationProblemResults}()
+  if simulation_folder === nothing
+    simulation_folder = mktempdir()
+  else
+    mkpath(simulation_folder)
+  end
 
-    # Loop through each time slice
-    for initial_time_slice in minimum_initial_time:window_shift:maximum_initial_time
-        verbose && @info "Processing time slice" initial_time_slice
-        
-        # Create and solve the decision model with the current time slice
-        problem = DecisionModel(
-            template, sys;
-            horizon=schedule_horizon,
-            initial_time=initial_time_slice,
-            kwargs...
-        )
+  if simulation_steps === nothing
+    simulation_steps = IS.get_forecast_window_count(sys.data)
+  end
 
-        build!(problem; output_dir=mktempdir())
-        solve!(problem)
-        res_dict[initial_time_slice] = OptimizationProblemResults(problem)
-    end
+  # Create decision model with the provided template
+  decision_model = DecisionModel(
+    template, sys;
+    decision_model_kwargs...
+  )
 
-    return res_dict
+  # Create simulation models container
+  sim_models = SimulationModels(
+    decision_models=[decision_model]
+  )
+
+  # Define sequence with InterProblemChronology for automatic initial condition propagation
+  sequence = SimulationSequence(
+    models=sim_models,
+    ini_cond_chronology=InterProblemChronology(),
+  )
+
+  # Create and build simulation
+  sim = Simulation(;
+    models=sim_models,
+    sequence=sequence,
+    name=simulation_name,
+    simulation_folder=simulation_folder,
+    steps=simulation_steps,
+    simulation_kwargs...
+  )
+
+  build!(sim)
+  execute!(sim)
+
+  return SimulationResults(sim)
 end
