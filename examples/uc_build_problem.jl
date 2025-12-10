@@ -1,21 +1,56 @@
 using Revise
 using SiennaNEM
+using Dates
 
 using PowerSimulations
 
 using HiGHS
 
-system_data_dir = "data/nem12/arrow"
-ts_data_dir = joinpath(system_data_dir, "schedule-1w")
-scenario_name = 1
-
-data = read_system_data(system_data_dir)
-read_ts_data!(data, ts_data_dir)
-add_tsf_data!(data, scenario_name=scenario_name)
-update_system_data_bound!(data)
-clean_ts_data!(data)
-
-sys = create_system!(data)
-
-template_uc = SiennaNEM.build_problem_base_uc()
+# setup optimizer
 solver = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
+
+# NOTE:
+#   The `horizon = Hour(T)` parameter defines the optimization window span of T
+# hours for each decision model. The `interval = Hour(I)` parameter defines the
+# sliding window shift of I hours between consecutive time slices, starting from
+# the minimum date in `minimum(data["demand_l_ts"][!, :date])`.
+#
+#   For example, with horizon=48 and interval=24:
+#   - Window 1: Hours 0-47
+#   - Window 2: Hours 24-71 (overlaps 24 hours with Window 1)
+#   - Window 3: Hours 48-95, etc.
+#
+#   When interval < horizon, windows overlap. When interval = horizon, windows
+# are sequential without overlap. When interval > horizon, there will be gaps
+# between windows.
+#
+#   Trade-offs:
+#   - Larger horizon: Longer optimization windows, better long-term decisions.
+#   - Smaller interval: More frequent re-optimization and overlapping solutions,
+#     but have more flexibility in selecting time slices that will be used, 
+#
+#   Note: In `run_decision_model_loop`, the full `horizon` is always used for
+# each optimization window. Initial conditions (generator status, storage SoC,
+# etc.) do NOT propagate between windows in the current implementation due to
+# bug in Sienna.
+
+# input variables parameters
+system_data_dir = "data/nem12/arrow"
+schedule_name = "schedule-1w"
+ts_data_dir = joinpath(system_data_dir, schedule_name)
+scenario_name = 1
+horizon = Hour(48)
+interval = Hour(24)
+
+# data and system
+data = SiennaNEM.get_data(system_data_dir, ts_data_dir)
+sys = SiennaNEM.create_system!(data)
+SiennaNEM.add_ts!(
+    sys, data;
+    horizon=horizon,  # horizon of each time slice that will be used in the study
+    interval=interval,  # interval within each time slice, not the resolution of the time series
+    scenario_name=scenario_name,  # scenario number
+)
+
+# problem template
+template_uc = SiennaNEM.build_problem_base_uc()

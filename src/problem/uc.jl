@@ -1,5 +1,3 @@
-using PowerSystems
-using PowerSimulations
 using HydroPowerSimulations
 using StorageSystemsSimulations
 using PowerModels
@@ -12,6 +10,8 @@ function build_problem_base_uc()
     set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_uc, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_uc, PowerLoad, StaticPowerLoad)
+
+    # TODO: bug in SimulationSequence
     storage_model = DeviceModel(
         EnergyReservoirStorage,
         StorageDispatchWithReserves;
