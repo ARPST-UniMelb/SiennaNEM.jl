@@ -56,14 +56,16 @@ end
         simulation_kwargs::NamedTuple=(;),
     )
 
-Set up and solve multiple unit commitment decision models using PowerSimulations'
-`Simulation` infrastructure with moving horizon optimization.
+Set up and solve multiple unit commitment decision models in a sequential loop
+across forecast time windows.
 
-This function leverages PowerSimulations' `Simulation` and `InterProblemChronology()`
-to automatically handle:
-- Initial conditions propagation between windows (generator status, power, MUT/MDT, SoC)
-- Time window advancement based on system's forecast interval
-- Proper sequencing of optimization problems
+This function iterates through each forecast initial time in the system and solves
+independent optimization problems. Currently implements a manual loop approach.
+
+**Note:** Initial conditions (generator status, power, MUT/MDT, storage SoC) are NOT
+automatically propagated between windows in this implementation. Each window is solved
+independently. Future implementation will use PowerSimulations' `SimulationSequence` with
+`InterProblemChronology()` for proper chronology handling.
 
 # Arguments
 - `template::ProblemTemplate`: The problem template defining the UC formulation.
@@ -71,32 +73,28 @@ to automatically handle:
   Must be pre-built with time series using `add_ts!` with desired `horizon` and `interval`.
 
 # Keyword Arguments
-- `simulation_name::Union{String, Nothing}=nothing`: Name for the simulation and decision model.
-  If `nothing`, defaults to "DA-UC".
-- `simulation_folder::Union{String, Nothing}=nothing`: Directory to store simulation results.
-  If `nothing`, creates a temporary directory that is automatically cleaned up.
-- `simulation_steps::Union{Int, Nothing}=nothing`: Number of simulation steps to execute.
-  If `nothing`, auto-detects from system's forecast window count.
+- `simulation_name::Union{String, Nothing}=nothing`: Currently unused. Reserved for future
+  Simulation-based implementation.
+- `simulation_folder::Union{String, Nothing}=nothing`: Currently unused. Reserved for future
+  Simulation-based implementation.
+- `simulation_steps::Union{Int, Nothing}=nothing`: Currently unused. Loop runs for all
+  forecast windows in the system.
 - `decision_model_kwargs::NamedTuple=(;)`: Keyword arguments for `DecisionModel` constructor
-  (e.g., `optimizer`, `warm_start`, `initial_time`, etc.)
-- `simulation_kwargs::NamedTuple=(;)`: Keyword arguments for `Simulation` constructor
-  (e.g., `initial_time`, etc. Note: `steps` is handled by `simulation_steps` parameter)
+  (e.g., `optimizer`, `warm_start`, etc.)
+- `simulation_kwargs::NamedTuple=(;)`: Currently unused. Reserved for future implementation.
 
 # Returns
-- `SimulationResults`: PowerSimulations simulation results object containing all decision
-  problem results across all time windows. Use `get_decision_problem_results()` and
-  `read_realized_variables()` to access specific results.
+- `Dict{DateTime, OptimizationProblemResults}`: Dictionary mapping each forecast initial time
+  to its corresponding optimization results. Each result is independent (no chronology).
 
 # Notes
-- The system's time series structure (horizon and interval from `add_ts!`) determines:
-  * Optimization window size (horizon)
-  * How far the window advances each step (interval, not resolution)
-- Initial conditions (P, status, MUT/MDT, SoC) automatically propagate between windows
-  via `InterProblemChronology()`.
-- Use `read_realized_variables()` to extract only committed decisions (first interval of each window).
+- Each time window is solved independently without initial condition propagation.
+- Storage state of charge does NOT carry over between windows.
+- Generator status, power levels, and MUT/MDT counters reset each window.
+- For proper multi-period optimization with chronology, this will be replaced with
+  PowerSimulations' `Simulation` infrastructure (see commented code).
 
 # See Also
-- PowerSimulations.jl documentation on Simulations and Chronologies
 - `run_decision_model()` for single-window optimization
 """
 function run_decision_model_loop(
