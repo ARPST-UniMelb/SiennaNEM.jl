@@ -1,7 +1,7 @@
 # SiennaNEM
 
-[![Build Status](https://github.com/yasirroni/SiennaNEM.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/yasirroni/SiennaNEM.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/yasirroni/SiennaNEM.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/yasirroni/SiennaNEM.jl)
+[![Build Status](https://github.com/ARPST-UniMelb/SiennaNEM.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ARPST-UniMelb/SiennaNEM.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/ARPST-UniMelb/SiennaNEM.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ARPST-UniMelb/SiennaNEM.jl)
 
 [SiennaNEM.jl](https://github.com/ARPST-UniMelb/SiennaNEM.jl) enables operational scheduling studies of the NEM using [Sienna](https://nrel-sienna.github.io/Sienna/) and [JuMP](https://jump.dev/). It constructs unit commitment models from [PISP](https://github.com/ARPST-UniMelb/PISP.jl) data and provides analysis and visualization tools for system operations insights.
 
