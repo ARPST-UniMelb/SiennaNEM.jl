@@ -13,7 +13,11 @@ function build_problem_base_uc()
 
     # TODO:
     #   1. bug in SimulationSequence
-    #   2. bug in PSY5 time series handling
+    #       ┌ Error: simulation failed
+    #       │   exception =
+    #       │    KeyError: key 49 not found  (horizon + 1)
+    #       │    Stacktrace:
+
     storage_model = DeviceModel(
         EnergyReservoirStorage,
         StorageDispatchWithReserves;

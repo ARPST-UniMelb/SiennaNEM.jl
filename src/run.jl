@@ -126,63 +126,64 @@ function run_decision_model_loop(
     # work with StorageSystemsSimulations. Thus, we temporarily use manual loop
     # and return dict of OptimizationProblemResults(decision_model).
 
-    # # Create decision model with the provided template
-    # decision_model = DecisionModel(
-    #   template, sys;
-    #   decision_model_kwargs...
-    # )
+    # Create decision model with the provided template
+    decision_model = DecisionModel(
+      template, sys;
+      decision_model_kwargs...
+    )
 
-    # # Create simulation models container
-    # sim_models = SimulationModels(
-    #   decision_models=[decision_model]
-    # )
+    # Create simulation models container
+    sim_models = SimulationModels(
+      decision_models=[decision_model]
+    )
 
-    # # Define sequence with InterProblemChronology for automatic initial condition propagation
-    # sequence = SimulationSequence(
-    #   models=sim_models,
-    #   ini_cond_chronology=InterProblemChronology(),
-    # )
+    # Define sequence with InterProblemChronology for automatic initial condition propagation
+    sequence = SimulationSequence(
+      models=sim_models,
+      ini_cond_chronology=InterProblemChronology(),
+    )
 
-    # # Create and build simulation
-    # sim = Simulation(;
-    #   models=sim_models,
-    #   sequence=sequence,
-    #   name=simulation_name,
-    #   simulation_folder=simulation_folder,
-    #   steps=simulation_steps,
-    #   simulation_kwargs...
-    # )
+    # Create and build simulation
+    sim = Simulation(;
+      models=sim_models,
+      sequence=sequence,
+      name=simulation_name,
+      simulation_folder=simulation_folder,
+      steps=simulation_steps,
+      simulation_kwargs...
+    )
 
-    # build!(sim)
-    # execute!(sim)
+    build!(sim)
+    execute!(sim)
 
-    # return SimulationResults(sim)
+    return sim
 
     # Loop through each time slice
     # TODO
     # - Use Chronology, that is SimulationSequence.
     # - Support passing storage last state of charge into initial state of charge on the next loop.
     # - Support schedule_horizon wider than window_shift to have overlapping time slices.
-    decision_models = OrderedDict{DateTime,DecisionModel}()
-    for (step, initial_time_slice) in enumerate(InfrastructureSystems.get_forecast_initial_times(sys.data))
-        # Create and solve the decision model with the current time slice
-        decision_model = DecisionModel(
-            template, sys;
-            horizon=InfrastructureSystems.get_forecast_horizon(sys.data),
-            initial_time=initial_time_slice,
-            decision_model_kwargs...
-        )
+    #
+    # decision_models = OrderedDict{DateTime,DecisionModel}()
+    # for (step, initial_time_slice) in enumerate(InfrastructureSystems.get_forecast_initial_times(sys.data))
+    #     # Create and solve the decision model with the current time slice
+    #     decision_model = DecisionModel(
+    #         template, sys;
+    #         horizon=InfrastructureSystems.get_forecast_horizon(sys.data),
+    #         initial_time=initial_time_slice,
+    #         decision_model_kwargs...
+    #     )
 
-        build!(decision_model; output_dir=mktempdir())
-        solve!(decision_model)
-        decision_models[initial_time_slice] = decision_model
+    #     build!(decision_model; output_dir=mktempdir())
+    #     solve!(decision_model)
+    #     decision_models[initial_time_slice] = decision_model
 
-        # Break if we've reached the desired number of simulation steps
-        if step >= simulation_steps
-            break
-        end
-    end
-    return decision_models
+    #     # Break if we've reached the desired number of simulation steps
+    #     if step >= simulation_steps
+    #         break
+    #     end
+    # end
+    # return decision_models
 end
 
 function get_result(decision_model::DecisionModel)

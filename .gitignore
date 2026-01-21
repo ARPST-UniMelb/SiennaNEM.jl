@@ -17,3 +17,6 @@ examples/imgs/
 bench/imgs/
 bench/csv/
 *h5
+rts-store/
+rts-store.zip
+
