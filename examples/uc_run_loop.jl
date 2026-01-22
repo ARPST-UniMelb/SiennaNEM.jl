@@ -1,7 +1,7 @@
 # NOTE:
 #   This function accept additional keyword arguments to pass to `DecisionModel`]
 # constructor.
-simulation_steps = 1
+simulation_steps = 2
 results = SiennaNEM.run_decision_model_loop(
     template_uc, sys;
     simulation_folder="examples/result/simulation_folder",

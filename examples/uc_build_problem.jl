@@ -32,13 +32,19 @@ solver = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 # each optimization window. Initial conditions (generator status, storage SoC,
 # etc.) do NOT propagate between windows in the current implementation due to
 # bug in Sienna.
+# 
+#   Warning: Currently, there is a bug in Sienna that prevents the number of
+# batteries to be higher than time horizon. Since there is about 50 active
+# batteries in the NEM system model, we use `horizon = Hour(72)` to make sure
+# the time horizon is bigger than the number of batteries.
+# See: https://github.com/NREL-Sienna/StorageSystemsSimulations.jl/issues/76
 
 # input variables parameters
 system_data_dir = joinpath(@__DIR__, "../..", "NEM-reliability-suite", "data", "arrow")
 schedule_name = "schedule-1w"
 ts_data_dir = joinpath(system_data_dir, schedule_name)
 scenario = 1
-horizon = Hour(48)
+horizon = Hour(72)
 interval = Hour(24)
 
 # data and system
