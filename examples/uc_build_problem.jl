@@ -28,7 +28,7 @@ solver = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 #   - Smaller interval: More frequent re-optimization and overlapping solutions,
 #     but have more flexibility in selecting time slices that will be used, 
 #
-#   Note: In `run_decision_model_loop`, the full `horizon` is always used for
+#   Note: In `run_simulation`, the full `horizon` is always used for
 # each optimization window. Initial conditions (generator status, storage SoC,
 # etc.) do NOT propagate between windows in the current implementation due to
 # bug in Sienna.

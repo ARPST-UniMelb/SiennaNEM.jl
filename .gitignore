@@ -12,10 +12,11 @@
 data/
 
 # result
-examples/result/
-examples/imgs/
 bench/imgs/
 bench/csv/
+examples/result/
+examples/imgs/
+test/sienna-files/
 *h5
 rts-store/
 rts-store.zip
