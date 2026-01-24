@@ -9,12 +9,11 @@ include("test_run_simulation.jl")
                 readdir(arrow_dir)
             )
             if !isempty(schedule_names)
-                _, _, timings = test_run_simulation(
+                _, _, _ = test_run_simulation(
                     arrow_dir,
                     joinpath(arrow_dir, schedule_names[1]),
                     "arrow",
                 )
-                all_timings["PISP-Arrow"] = timings
             else
                 @test_skip "No schedule directories found in PISP Arrow data"
             end

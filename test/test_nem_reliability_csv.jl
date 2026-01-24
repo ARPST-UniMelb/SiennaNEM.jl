@@ -2,12 +2,11 @@ nem_reliability_data_dir = joinpath(@__DIR__, "../..", "NEM-reliability-suite")
 include("test_run_simulation.jl")
 @testset "NEM reliability data - CSV" verbose = true begin
     if isdir(nem_reliability_data_dir)
-        _, _, timings = test_run_simulation(
+        _, _, _ = test_run_simulation(
             joinpath(nem_reliability_data_dir, "data", "csv"),
             joinpath(nem_reliability_data_dir, "data", "csv", "schedule-1w"),
             "csv",
         )
-        all_timings["NEM-CSV"] = timings
     else
         @test_skip "NEM reliability data directory not found"
     end

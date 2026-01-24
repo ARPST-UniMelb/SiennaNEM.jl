@@ -9,12 +9,11 @@ include("test_run_simulation.jl")
                 readdir(csv_dir)
             )
             if !isempty(schedule_names)
-                _, _, timings = test_run_simulation(
+                _, _, _ = test_run_simulation(
                     csv_dir,
                     joinpath(csv_dir, schedule_names[1]),
                     "csv",
                 )
-                all_timings["PISP-CSV"] = timings
             else
                 @test_skip "No schedule directories found in PISP CSV data"
             end
