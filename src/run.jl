@@ -63,11 +63,7 @@ function run_simulation(
     decision_model_kwargs::NamedTuple=(;),
     simulation_kwargs::NamedTuple=(;),
 )
-    # NOTE:
-    #   There is a bug/bottle neck in this code that make running small number
-    # of steps with small windows, took hours in large time series data set.
-    # The length of the original time series data should not impact both build
-    # and execution.
+    # TODO: Improve execution! speed
 
     if simulation_name === nothing
         simulation_name = "DA-UC"

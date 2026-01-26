@@ -63,6 +63,7 @@ using Revise
 Activate environment,
 
 ```julia
+using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
 ```
