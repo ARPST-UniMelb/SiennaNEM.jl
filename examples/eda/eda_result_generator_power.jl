@@ -3,10 +3,14 @@ using DataFrames, OrderedCollections
 ## Generator Post Processing
 # Create mapping from bus ID to component columns
 # NOTE: currently, the Hydro is included as ThermalStandard
-dfs_res["post"] = Dict{String, Any}()  # for storing post processing results
-add_maps!(data)
 
 timecol = :DateTime
+if !haskey(dfs_res, "post")
+    dfs_res["post"] = Dict{String, Any}()
+end
+if !haskey(dfs_res, "map")
+    add_maps!(data)
+end
 
 if results isa PowerSimulations.SimulationProblemResults
     dfs_res_ = dfs_res["realized"]

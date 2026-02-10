@@ -1,12 +1,13 @@
 using DataFrames, OrderedCollections
 
 ## Energy Storage System Post Processing
-# Create post-processing dictionary if it doesn't exist
+timecol = :DateTime
 if !haskey(dfs_res, "post")
     dfs_res["post"] = Dict{String, Any}()
 end
-
-timecol = :DateTime
+if !haskey(dfs_res, "map")
+    add_maps!(data)
+end
 
 if results isa PowerSimulations.SimulationProblemResults
     dfs_res_ = dfs_res["realized"]
