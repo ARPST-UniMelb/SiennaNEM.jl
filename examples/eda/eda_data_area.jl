@@ -587,6 +587,45 @@ function get_branch_thermal_capacity_dc_oh(ta::Real, tm::Real, p::Real)
     end
 end
 
+"""
+    get_branch_thermal_capacity(ta_df, line_df, cols; tech_col=:tech) -> DataFrame
+
+Agnostic DataFrame version of thermal derating.
+
+- `ta_df[:value]` is ambient temperature (°C)
+- `cols` must be a 9-element vector/tuple of Symbols in this order:
+    (t1, t2, t3, p1, p2, p3, tm1, tm2, tm3)
+- joins `ta_df` with `line_df` on `:id_lin`
+- overwrites `:value` with derated MW
+- returns `:id, :id_lin, :scenario, :date, :value`
+"""
+function get_branch_thermal_capacity(
+    ta_df::DataFrame,
+    line_df::DataFrame,
+    cols;
+    tech_col::Symbol = :tech,
+)
+    t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = cols
+
+    df = leftjoin(ta_df, line_df; on=:id_lin)
+
+    transform!(
+        df,
+        [tech_col, t1, t2, t3, p1, p2, p3, tm1, tm2, tm3, :value] =>
+        ByRow((tech, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v, ta) -> begin
+            if tech == "ac_oh"
+                get_branch_thermal_capacity_ac_oh(ta, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v)
+            elseif tech == "dc_oh"
+                get_branch_thermal_capacity_dc_oh(ta, tm3v, p1v)
+            else
+                Float64(p1v)
+            end
+        end) => :value,
+    )
+
+    select(df, :id, :id_lin, :scenario, :date, :value)
+end
+
 # # For EDA and Testing
 # # ambient temperature for derating (°C)
 # # ta = 25.0  # for testing mild temperature
@@ -670,45 +709,6 @@ end
 #     ]],
 #     allrows=true, allcols=true
 # )
-
-"""
-    get_branch_thermal_capacity(ta_df, line_df, cols; tech_col=:tech) -> DataFrame
-
-Agnostic DataFrame version of thermal derating.
-
-- `ta_df[:value]` is ambient temperature (°C)
-- `cols` must be a 9-element vector/tuple of Symbols in this order:
-    (t1, t2, t3, p1, p2, p3, tm1, tm2, tm3)
-- joins `ta_df` with `line_df` on `:id_lin`
-- overwrites `:value` with derated MW
-- returns `:id, :id_lin, :scenario, :date, :value`
-"""
-function get_branch_thermal_capacity(
-    ta_df::DataFrame,
-    line_df::DataFrame,
-    cols;
-    tech_col::Symbol = :tech,
-)
-    t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = cols
-
-    df = leftjoin(ta_df, line_df; on=:id_lin)
-
-    transform!(
-        df,
-        [tech_col, t1, t2, t3, p1, p2, p3, tm1, tm2, tm3, :value] =>
-        ByRow((tech, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v, ta) -> begin
-            if tech == "ac_oh"
-                get_branch_thermal_capacity_ac_oh(ta, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v)
-            elseif tech == "dc_oh"
-                get_branch_thermal_capacity_dc_oh(ta, tm3v, p1v)
-            else
-                Float64(p1v)
-            end
-        end) => :value,
-    )
-
-    select(df, :id, :id_lin, :scenario, :date, :value)
-end
 
 outdir = joinpath(@__DIR__, "..", "result", "eda")
 mkpath(outdir)
