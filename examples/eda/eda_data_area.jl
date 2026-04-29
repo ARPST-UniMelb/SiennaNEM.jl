@@ -110,28 +110,28 @@ transform!(
 show(
     filter(
         :investment => ==(false), filter(:active => ==(true), data["line"])
-    )[:, [:id_lin, :alias, :area_from, :area_to, :id_bus_from, :id_bus_to, :fwcap, :rvcap, :fwcap_summer, :rvcap_summer, :fwcap_peak_demand, :rvcap_peak_demand]],
+    )[:, [:id_lin, :name, :alias, :area_from, :area_to, :id_bus_from, :id_bus_to, :fwcap, :rvcap, :fwcap_summer, :rvcap_summer, :fwcap_peak_demand, :rvcap_peak_demand]],
     allrows=true, allcols=true
 )
-# 15×12 DataFrame
-#  Row │ id_lin  alias                  area_from  area_to  id_bus_from  id_bus_to  fwcap     rvcap     fwcap_summer  rvcap_summer  fwcap_peak_demand  rvcap_peak_demand 
-#      │ Int64   String                 String     String   Int64        Int64      Float64  Float64  Float64      Float64      Float64           Float64          
-# ─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#    1 │      1  CQ->NQ                 QLD        QLD                2          1   1400.0   1400.0       1200.0       1200.0            1200.0            1200.0
-#    2 │      2  CQ->GG                 QLD        QLD                2          3   1050.0   1100.0        700.0        750.0             700.0             750.0
-#    3 │      3  SQ->CQ                 QLD        QLD                4          2   1100.0   2100.0       1100.0       2100.0            1100.0            2100.0
-#    4 │      4  QNI North              NSW        QLD                5          4    745.0   1170.0        745.0       1165.0             685.0            1205.0
-#    5 │      5  Terranora              NSW        QLD                5          4     50.0    200.0         50.0        150.0               0.0             130.0
-#    6 │      6  QNI South              NSW        NSW                6          5    910.0   1025.0        910.0        930.0             910.0             930.0
-#    7 │      7  CNSW->SNW North        NSW        NSW                6          7   4730.0   4730.0       4490.0       4490.0            4490.0            4490.0
-#    8 │      8  CNSW->SNW South        NSW        NSW                6          7   2720.0   2720.0       2540.0       2540.0            2540.0            2540.0
-#    9 │      9  VNI North              NSW        NSW                8          6   2950.0   2590.0       2700.0       2320.0            2700.0            2320.0
-#   10 │     10  VNI South              VIC        NSW                9          8   1000.0    400.0       1000.0        400.0             870.0             400.0
-#   11 │     11  Heywood                VIC        SA                 9         12    650.0    650.0        650.0        650.0             650.0             650.0
-#   12 │     12  SESA->CSA              SA         SA                12         11    650.0    650.0        650.0        650.0             650.0             650.0
-#   13 │     13  Murraylink             VIC        SA                 9         11    220.0    200.0        220.0        200.0             220.0             100.0
-#   14 │     14  Basslink               TAS        VIC               10          9    594.0    478.0        594.0        478.0             594.0             478.0
-#   15 │     15  Project EnergyConnect  NSW        SA                 8         11    800.0    800.0        NaN          NaN               NaN               NaN
+# 15×13 DataFrame
+#  Row │ id_lin  name        alias                  area_from  area_to  id_bus_from  id_bus_to  fwcap     rvcap     fwcap_summer  rvcap_summer  fwcap_peak_demand  rvcap_peak_demand 
+#      │ Int64   String      String                 String     String   Int64        Int64      Float64?  Float64?  Float64       Float64       Float64            Float64           
+# ─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#    1 │      1  CQ->NQ      CQ->NQ                 QLD        QLD                2          1    1400.0    1400.0        1200.0        1200.0             1200.0             1200.0
+#    2 │      2  CQ->GG      CQ->GG                 QLD        QLD                2          3    1050.0    1100.0         700.0         750.0              700.0              750.0
+#    3 │      3  SQ->CQ      SQ->CQ                 QLD        QLD                4          2    1100.0    2100.0        1100.0        2100.0             1100.0             2100.0
+#    4 │      4  NNSW->SQ    QNI North              NSW        QLD                5          4     745.0    1170.0         745.0        1165.0              685.0             1205.0
+#    5 │      5  NNSW->SQ    Terranora              NSW        QLD                5          4      50.0     200.0          50.0         150.0                0.0              130.0
+#    6 │      6  CNSW->NNSW  QNI South              NSW        NSW                6          5     910.0    1025.0         910.0         930.0              910.0              930.0
+#    7 │      7  CNSW->SNW   CNSW->SNW North        NSW        NSW                6          7    4730.0    4730.0        4490.0        4490.0             4490.0             4490.0
+#    8 │      8  CNSW->SNW   CNSW->SNW South        NSW        NSW                6          7    2720.0    2720.0        2540.0        2540.0             2540.0             2540.0
+#    9 │      9  SNSW->CNSW  VNI North              NSW        NSW                8          6    2950.0    2590.0        2700.0        2320.0             2700.0             2320.0
+#   10 │     10  VIC->SNSW   VNI South              VIC        NSW                9          8    1000.0     400.0        1000.0         400.0              870.0              400.0
+#   11 │     11  VIC->SESA   Heywood                VIC        SA                 9         12     650.0     650.0         650.0         650.0              650.0              650.0
+#   12 │     12  SESA->CSA   SESA->CSA              SA         SA                12         11     650.0     650.0         650.0         650.0              650.0              650.0
+#   13 │     13  VIC->CSA    Murraylink             VIC        SA                 9         11     220.0     200.0         220.0         200.0              220.0              100.0
+#   14 │     14  TAS->VIC    Basslink               TAS        VIC               10          9     594.0     478.0         594.0         478.0              594.0              478.0
+#   15 │     15  SNSW->CSA   Project EnergyConnect  NSW        SA                 8         11     800.0     800.0         800.0         800.0              800.0              800.0
 
 # NOTE: We don't actually need directional limit detection. We can ust use fwcap and rvcap
 # independently.
@@ -536,9 +536,9 @@ NaN fallback (when `tm` is NaN, no derating applies in that region):
 """
 function get_branch_thermal_capacity_ac_oh(
     ta::Real,
-    t1::Real, t2::Real, t3::Real,
-    p1::Real, p2::Real, p3::Real,
-    tm1::Real, tm2::Real, tm3::Real,
+    t2::Real, t3::Real,
+    p2::Real, p3::Real,
+    tm2::Real, tm3::Real,
 )
     ta = Float64(ta)
 
@@ -547,17 +547,18 @@ function get_branch_thermal_capacity_ac_oh(
         return sqrt(max(tm - ta, 0.0) / (tm - t_reference))
     end
 
-    if ta <= t1
-        return Float64(p1)
+    # Winter to Summer interpolation is no longer used
+    # if ta <= t1
+    #     return Float64(p1)
+    # elseif ta <= t2
+    #     c = cf(Float64(tm1), Float64(t1))
+    #     return isnan(c) ? Float64(p1) : Float64(p1) * c
 
-    elseif ta <= t2
-        c = cf(Float64(tm1), Float64(t1))
-        return isnan(c) ? Float64(p1) : Float64(p1) * c
-
+    if ta <= t2
+        return Float64(p2)
     elseif ta <= t3
         c = cf(Float64(tm2), Float64(t2))
         return isnan(c) ? Float64(p2) : Float64(p2) * c
-
     else
         c = cf(Float64(tm3), Float64(t3))
         return isnan(c) ? Float64(p3) : Float64(p3) * c
@@ -614,7 +615,7 @@ function get_branch_thermal_capacity(
         [tech_col, t1, t2, t3, p1, p2, p3, tm1, tm2, tm3, :value] =>
         ByRow((tech, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v, ta) -> begin
             if tech == "ac_oh"
-                get_branch_thermal_capacity_ac_oh(ta, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v)
+                get_branch_thermal_capacity_ac_oh(ta, t2v, t3v, p2v, p3v, tm2v, tm3v)
             elseif tech == "dc_oh"
                 get_branch_thermal_capacity_dc_oh(ta, tm3v, p1v)
             else

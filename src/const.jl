@@ -50,6 +50,8 @@ const line_to_fwcap_peak_demand = OrderedDict{Int,Float64}()
 const line_to_rvcap_summer = OrderedDict{Int,Float64}()
 const line_to_fwcap_summer = OrderedDict{Int,Float64}()
 const line_to_tech = OrderedDict{Int,String}()
+const forward_thermal_notconstrained = Vector{Int}()
+const reverse_thermal_notconstrained = Vector{Int}()
 const optimization_result_handlers = Vector{Tuple{String,Function}}()
 const constant_temperature = Dict{String,Float64}()
 
@@ -206,6 +208,9 @@ function _populate_constants!()
         "dc_oh_tref" => 38.0,  # °C, no reduction below this
         "dc_oh_derating_rate" => 0.125,  # 12.5% reduction per °C above base
     ))
+    # Lines where capacity is not thermally derated
+    append!(empty!(forward_thermal_notconstrained),  [1, 4, 6, 10, 12, 14])
+    append!(empty!(reverse_thermal_notconstrained),  [3, 10, 11, 12, 14])
     append!(empty!(optimization_result_handlers), [
         ("expressions", read_expressions),
         ("aux_variables", read_aux_variables),
