@@ -589,37 +589,50 @@ function get_branch_thermal_capacity_dc_oh(ta::Real, tm::Real, p::Real)
 end
 
 """
-    get_branch_thermal_capacity(ta_df, line_df, cols; tech_col=:tech) -> DataFrame
+    get_branch_thermal_capacity(ta_df, line_df, cols; notconstrained_lines, tech_col=:tech) -> DataFrame
 
 Agnostic DataFrame version of thermal derating.
 
 - `ta_df[:value]` is ambient temperature (°C)
-- `cols` must be a 9-element vector/tuple of Symbols in this order:
-    (t1, t2, t3, p1, p2, p3, tm1, tm2, tm3)
+- `cols` must be a 6-element vector/tuple of Symbols in this order:
+    (t2, t3, p2, p3, tm2, tm3)
+- `notconstrained_lines` is a vector of `id_lin` values that are NOT thermally derated.
+  Lines present in this vector return the base capacity for the applicable region:
+    - `ta ≤ t3` → `p2`
+    - `ta > t3`  → `p3`
 - joins `ta_df` with `line_df` on `:id_lin`
 - overwrites `:value` with derated MW
 - returns `:id, :id_lin, :scenario, :date, :value`
+
+The t1, p1, and tm1 is for winter and no longer used.
 """
 function get_branch_thermal_capacity(
     ta_df::DataFrame,
     line_df::DataFrame,
     cols;
+    notconstrained_lines::Vector = Vector{Int}(),
     tech_col::Symbol = :tech,
 )
-    t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = cols
+    t2, t3, p2, p3, tm2, tm3 = cols
 
     df = leftjoin(ta_df, line_df; on=:id_lin)
 
     transform!(
         df,
-        [tech_col, t1, t2, t3, p1, p2, p3, tm1, tm2, tm3, :value] =>
-        ByRow((tech, t1v, t2v, t3v, p1v, p2v, p3v, tm1v, tm2v, tm3v, ta) -> begin
+        [:id_lin, tech_col, t2, t3, p2, p3, tm2, tm3, :value] =>
+        ByRow((id_lin, tech, t2v, t3v, p2v, p3v, tm2v, tm3v, ta) -> begin
+
+            # Not thermally constrained — return base capacity for region only
+            if id_lin ∈ notconstrained_lines
+                return ta <= t3v ? Float64(p2v) : Float64(p3v)
+            end
+
             if tech == "ac_oh"
                 get_branch_thermal_capacity_ac_oh(ta, t2v, t3v, p2v, p3v, tm2v, tm3v)
             elseif tech == "dc_oh"
-                get_branch_thermal_capacity_dc_oh(ta, tm3v, p1v)
+                get_branch_thermal_capacity_dc_oh(ta, tm3v, p2v)
             else
-                Float64(p1v)
+                Float64(p2v)
             end
         end) => :value,
     )
@@ -748,9 +761,10 @@ ta_df
 
 fwcap_sched = get_branch_thermal_capacity(
     ta_df, data["line"],
-    (:tref_winter, :tref_summer, :tref_peak_demand,
-     :fwcap, :fwcap_summer, :fwcap_peak_demand,
-     :tm1_fwcap, :tm2_fwcap, :tm3_fwcap)
+    (:tref_summer, :tref_peak_demand,
+     :fwcap_summer, :fwcap_peak_demand,
+     :tm2_fwcap, :tm3_fwcap);
+     notconstrained_lines=forward_thermal_notconstrained
 )
 CSV.write(joinpath(outdir, "Line_fwcap-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), fwcap_sched)
 fwcap_sched
@@ -783,9 +797,10 @@ fwcap_sched
 
 rvcap_sched = get_branch_thermal_capacity(
     ta_df, data["line"],
-    (:tref_winter, :tref_summer, :tref_peak_demand,
-     :rvcap, :rvcap_summer, :rvcap_peak_demand,
-     :tm1_rvcap, :tm2_rvcap, :tm3_rvcap)
+    (:tref_summer, :tref_peak_demand,
+     :fwcap_summer, :fwcap_peak_demand,
+     :tm2_fwcap, :tm3_fwcap);
+     notconstrained_lines=reverse_thermal_notconstrained
 )
 CSV.write(joinpath(outdir, "Line_rvcap-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), rvcap_sched)
 rvcap_sched
