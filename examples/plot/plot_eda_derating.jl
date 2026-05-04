@@ -98,6 +98,7 @@ function make_plot(series_fwd, series_rev, labels, tas, ylabel, title_suffix; kw
         titlefontsize  = 10,
         xlims  = (first(tas), last(tas)),
         xticks = 0:5:50,
+        # yticks = 0:0.1:1.0,  use only on the normalized plot
         size   = (900, 420),
         grid   = true,
         gridalpha = 0.25,
@@ -203,7 +204,9 @@ for gid in gen_ids
     # Retrieve the installed capacity for this generator
     gen_cap = id_gen_to_capacity[gid]
 
-    # pmax_corrected = min(cf * gen_capacity, power_output)
+    # This code use:
+    # installed_capacity = max(gen.capacity, maximum(trace_value))
+    # pmax_corrected = min(cf * installed_capacity, power_output)
     merged[!, :pmax_corrected] = min.(
         merged[!, :value_1] .* gen_cap,  # cf * installed capacity
         merged[!, :value]                # power output

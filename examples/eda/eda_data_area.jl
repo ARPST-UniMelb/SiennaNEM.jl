@@ -172,7 +172,7 @@ show(
 #    2 │      2  CQ->GG                 QLD        QLD      ac_oh
 #    3 │      3  SQ->CQ                 QLD        QLD      ac_oh
 #    4 │      4  QNI North              NSW        QLD      ac_oh
-#    5 │      5  Terranora              NSW        QLD      dc_oh
+#    5 │      5  Terranora              NSW        QLD      dc_ug
 #    6 │      6  QNI South              NSW        NSW      ac_oh
 #    7 │      7  CNSW->SNW North        NSW        NSW      ac_oh
 #    8 │      8  CNSW->SNW South        NSW        NSW      ac_oh
@@ -180,7 +180,7 @@ show(
 #   10 │     10  VNI South              VIC        NSW      ac_oh
 #   11 │     11  Heywood                VIC        SA       ac_oh
 #   12 │     12  SESA->CSA              SA         SA       ac_oh
-#   13 │     13  Murraylink             VIC        SA       dc_oh
+#   13 │     13  Murraylink             VIC        SA       dc_ug
 #   14 │     14  Basslink               TAS        VIC      dc_ss
 #   15 │     15  Project EnergyConnect  NSW        SA       ac_oh
 
@@ -568,7 +568,7 @@ end
 """
     get_branch_thermal_capacity_dc_oh(ta, tm, p) -> Float64
 
-Compute derated capacity for DC overhead (`dc_oh`) lines.
+Compute derated capacity for DC overhead (`dc_ug`) lines.
 
 - `ta ≤ DC_OH_BASE_TEMP`          : return `p` (no reduction)
 - `DC_OH_BASE_TEMP < ta ≤ tm`     : return `p * (1 - DC_OH_RATE * (ta - DC_OH_BASE_TEMP))`
@@ -629,7 +629,7 @@ function get_branch_thermal_capacity(
 
             if tech == "ac_oh"
                 get_branch_thermal_capacity_ac_oh(ta, t2v, t3v, p2v, p3v, tm2v, tm3v)
-            elseif tech == "dc_oh"
+            elseif tech == "dc_ug"
                 get_branch_thermal_capacity_dc_oh(ta, tm3v, p2v)
             else
                 Float64(p2v)
@@ -656,7 +656,7 @@ end
 #         ByRow((tech, args...) -> begin
 #             if tech == "ac_oh"
 #                 get_branch_thermal_capacity_ac_oh(ta, args...)
-#             elseif tech == "dc_oh"
+#             elseif tech == "dc_ug"
 #                 # use tm3 as the conductor limit, p1 (fwcap) as base capacity
 #                 t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = args
 #                 get_branch_thermal_capacity_dc_oh(ta, tm3, p1)
@@ -674,7 +674,7 @@ end
 #         ByRow((tech, args...) -> begin
 #             if tech == "ac_oh"
 #                 get_branch_thermal_capacity_ac_oh(ta, args...)
-#             elseif tech == "dc_oh"
+#             elseif tech == "dc_ug"
 #                 t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = args
 #                 get_branch_thermal_capacity_dc_oh(ta, tm3, p1)
 #             else  # dc_ss
@@ -1188,7 +1188,7 @@ function get_pv_module_temperature_correction_factor_nonconservative(
     tref_col::Symbol = :tref_peak_demand,
     t2m_to_ambient_shift_c::Real = 0.0,
     beta::Real = -0.0036,
-    G_poa_wm2::Real = 1000.0,
+    G_poa_wm2::Real = 1000.0,  # TODO: consider use actual solar irradiance, support historical and future solar.
     v_wind_ms::Real = 1.0,
     U0::Real = 25.0,
     U1::Real = 6.84,
@@ -1239,7 +1239,7 @@ gen_largepv_df = filter(:tech => t -> !ismissing(t) && (t in largepv_tech_values
 largepv_id_gens = Set(gen_largepv_df[!, :id_gen])
 ta_largepv_df = filter(:id_gen => idg -> idg in largepv_id_gens, ta_df)
 
-pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_conservative(
+pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_nonconservative(
     ta_largepv_df, gen_largepv_df;
     gen_id_col=:id_gen,
     U0=25.0, U1=6.84,
@@ -1260,7 +1260,7 @@ gen_roofpv_df = filter(:tech => t -> !ismissing(t) && (t in roofpv_tech_values),
 roofpv_id_gens = Set(gen_roofpv_df[!, :id_gen])
 ta_roofpv_df = filter(:id_gen => idg -> idg in roofpv_id_gens, ta_df)
 
-pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_conservative(
+pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_nonconservative(
     ta_roofpv_df, gen_roofpv_df;
     gen_id_col=:id_gen,
     U0=20.0, U1=0.0,

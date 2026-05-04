@@ -196,9 +196,9 @@ function _populate_constants!()
     ))
     # TODO: find all future dc lines
     merge!(empty!(line_to_tech), OrderedDict(
-        5 => "dc_oh",  # "Terranora", dc over head cable 
+        5 => "dc_ug",  # "Terranora", dc under ground cable 
         14 => "dc_ss",  # "Basslink", dc sub sea cable
-        13 => "dc_oh",  # "Murraylink", dc over head cable
+        13 => "dc_ug",  # "Murraylink", dc under ground cable
         50 => "dc_ss",  # "TAS-VIC Option 1", "NL_109_INV35", dc sub sea cable
         51 => "dc_ss",  # "TAS-VIC Option 2", "NL_109_INV35", dc sub sea cable
     ))
