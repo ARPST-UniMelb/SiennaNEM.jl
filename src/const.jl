@@ -205,8 +205,8 @@ function _populate_constants!()
     merge!(empty!(constant_temperature), Dict(
         "ac_oh_tref" => 20.0,  # °C, no reduction below this
         "ac_oh_tm" => 90.0,  # °C, maximum allowable line temperature
-        "dc_oh_tref" => 38.0,  # °C, no reduction below this
-        "dc_oh_derating_rate" => 0.125,  # 12.5% reduction per °C above base
+        "dc_ug_tref" => 38.0,  # °C, no reduction below this
+        "dc_ug_derating_rate" => 0.125,  # 12.5% reduction per °C above base
     ))
     # Lines where capacity is not thermally derated
     append!(empty!(forward_thermal_notconstrained),  [1, 4, 6, 10, 12, 14])

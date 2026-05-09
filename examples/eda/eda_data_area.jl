@@ -567,23 +567,23 @@ function get_branch_thermal_capacity_ac_oh(
 end
 
 """
-    get_branch_thermal_capacity_dc_oh(ta, tm, p) -> Float64
+    get_branch_thermal_capacity_dc_ug(ta, tm, p) -> Float64
 
-Compute derated capacity for DC overhead (`dc_ug`) lines.
+Compute derated capacity for DC underground (`dc_ug`) lines.
 
-- `ta ≤ DC_OH_BASE_TEMP`          : return `p` (no reduction)
-- `DC_OH_BASE_TEMP < ta ≤ tm`     : return `p * (1 - DC_OH_RATE * (ta - DC_OH_BASE_TEMP))`
-- `ta > tm`                        : return `0.0`
+- `ta ≤ dc_ug_tref`              : return `p` (no reduction)
+- `dc_ug_tref < ta ≤ tm`         : return `p * (1 - dc_ug_derating_rate * (ta - dc_ug_tref))`
+- `ta > tm`                      : return `0.0`
 """
-function get_branch_thermal_capacity_dc_oh(ta::Real, tm::Real, p::Real)
+function get_branch_thermal_capacity_dc_ug(ta::Real, tm::Real, p::Real)
     ta = Float64(ta)
     tm = Float64(tm)
     p = Float64(p)
 
-    if ta <= constant_temperature["dc_oh_tref"]
+    if ta <= constant_temperature["dc_ug_tref"]
         return p
     elseif ta <= tm
-        return p * (1.0 - constant_temperature["dc_oh_derating_rate"] * (ta - constant_temperature["dc_oh_tref"]))
+        return p * (1.0 - constant_temperature["dc_ug_derating_rate"] * (ta - constant_temperature["dc_ug_tref"]))
     else
         return 0.0
     end
@@ -631,7 +631,7 @@ function get_branch_thermal_capacity(
             if tech == "ac_oh"
                 get_branch_thermal_capacity_ac_oh(ta, t2v, t3v, p2v, p3v, tm2v, tm3v)
             elseif tech == "dc_ug"
-                get_branch_thermal_capacity_dc_oh(ta, tm3v, p2v)
+                get_branch_thermal_capacity_dc_ug(ta, tm3v, p2v)
             else
                 Float64(p2v)
             end
@@ -660,7 +660,7 @@ end
 #             elseif tech == "dc_ug"
 #                 # use tm3 as the conductor limit, p1 (fwcap) as base capacity
 #                 t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = args
-#                 get_branch_thermal_capacity_dc_oh(ta, tm3, p1)
+#                 get_branch_thermal_capacity_dc_ug(ta, tm3, p1)
 #             else  # dc_ss
 #                 Float64(args[4])  # p1 = fwcap, no derating
 #             end
@@ -677,7 +677,7 @@ end
 #                 get_branch_thermal_capacity_ac_oh(ta, args...)
 #             elseif tech == "dc_ug"
 #                 t1, t2, t3, p1, p2, p3, tm1, tm2, tm3 = args
-#                 get_branch_thermal_capacity_dc_oh(ta, tm3, p1)
+#                 get_branch_thermal_capacity_dc_ug(ta, tm3, p1)
 #             else  # dc_ss
 #                 Float64(args[4])  # p1 = rvcap, no derating
 #             end
