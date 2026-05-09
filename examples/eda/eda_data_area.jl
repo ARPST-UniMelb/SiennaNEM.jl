@@ -8,7 +8,8 @@ using CSV
 method_number = 3
 date_start = "20380120"
 date_end = "20380126"
-era5_date = "20240213"
+# era5_date = "20240213"
+era5_date = "20170210"
 window_name = "7d"
 
 bus_to_area = SiennaNEM.get_map_from_df(data["bus"], :id_bus, :id_area)
@@ -729,8 +730,8 @@ mkpath(outdir)
 
 # Line temperature data
 temerature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
-temperature_file_name = "Line_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
-ta_df = CSV.read(joinpath(temerature_dir, temperature_file_name), DataFrame)
+line_temperature_file_name = "Line_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
+ta_df = CSV.read(joinpath(temerature_dir, line_temperature_file_name), DataFrame)
 ta_df
 # 9072×5 DataFrame
 #   Row │ id     id_lin  scenario  date                 value   
@@ -759,6 +760,10 @@ ta_df
 #  9072 │  9072      54         1  2030-12-27 23:00:00  20.7663
 #                                              9052 rows omitted
 
+# id_target = 13  # check Murraylink line temperature data
+# ta_df[ta_df.id_lin .== id_target, :]
+# maximum(ta_df[ta_df.id_lin .== id_target, :].value)
+
 fwcap_sched = get_branch_thermal_capacity(
     ta_df, data["line"],
     (:tref_summer, :tref_peak_demand,
@@ -766,7 +771,7 @@ fwcap_sched = get_branch_thermal_capacity(
      :tm2_fwcap, :tm3_fwcap);
      notconstrained_lines=forward_thermal_notconstrained
 )
-CSV.write(joinpath(outdir, "Line_fwcap-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), fwcap_sched)
+CSV.write(joinpath(outdir, "Line_fwcap-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), fwcap_sched)
 fwcap_sched
 # 9072×5 DataFrame
 #   Row │ id     id_lin  scenario  date                 value    
@@ -798,11 +803,11 @@ fwcap_sched
 rvcap_sched = get_branch_thermal_capacity(
     ta_df, data["line"],
     (:tref_summer, :tref_peak_demand,
-     :fwcap_summer, :fwcap_peak_demand,
-     :tm2_fwcap, :tm3_fwcap);
+     :rvcap_summer, :rvcap_peak_demand,
+     :tm2_rvcap, :tm3_rvcap);
      notconstrained_lines=reverse_thermal_notconstrained
 )
-CSV.write(joinpath(outdir, "Line_rvcap-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), rvcap_sched)
+CSV.write(joinpath(outdir, "Line_rvcap-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rvcap_sched)
 rvcap_sched
 # 9072×5 DataFrame
 #   Row │ id     id_lin  scenario  date                 value    
@@ -834,9 +839,9 @@ rvcap_sched
 # Generator temperature data
 # TODO: generator 23 missing, RoR
 temerature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
-temperature_file_name = "Generator_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
+generator_temperature_file_name = "Generator_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
 
-ta_df = CSV.read(joinpath(temerature_dir, temperature_file_name), DataFrame)
+ta_df = CSV.read(joinpath(temerature_dir, generator_temperature_file_name), DataFrame)
 ta_df
 
 # Add area data to generator DataFrame for temperature-based derating and analysis
@@ -978,7 +983,7 @@ windcf_sched = get_wind_thermal_correction_factor(
     gen_id_col=:id_gen,
     altitude_col=nothing,
 )
-CSV.write(joinpath(outdir, "Generator_cf_wind-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), windcf_sched)
+CSV.write(joinpath(outdir, "Generator_cf_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), windcf_sched)
 windcf_sched
 
 # We can see here that lots of wind became 0
@@ -1250,8 +1255,8 @@ pvinvcf_largepv_sched = get_inverter_thermal_correction_factor(
     T_derate_start=50.0, T_cutoff=60.0,
     cooling_dT=0.0,
 )
-CSV.write(joinpath(outdir, "Generator_cf_largepv_pvmod-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), pvmodcf_largepv_sched)
-CSV.write(joinpath(outdir, "Generator_cf_largepv_pvinv-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), pvinvcf_largepv_sched)
+CSV.write(joinpath(outdir, "Generator_cf_largepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), pvmodcf_largepv_sched)
+CSV.write(joinpath(outdir, "Generator_cf_largepv_pvinv-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), pvinvcf_largepv_sched)
 
 # RoofPV (rooftop_flush: U0=20, U1=0; string inverter 40→55)
 roofpv_tech_values = ("RoofPV",)
@@ -1271,8 +1276,8 @@ pvinvcf_roofpv_sched = get_inverter_thermal_correction_factor(
     T_derate_start=40.0, T_cutoff=55.0,
     cooling_dT=0.0,
 )
-CSV.write(joinpath(outdir, "Generator_cf_roofpv_pvmod-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), pvmodcf_roofpv_sched)
-CSV.write(joinpath(outdir, "Generator_cf_roofpv_pvinv-method3-20301221_20301227-era5shape20240213_7d_AEST_sched_.csv"), pvinvcf_roofpv_sched)
+CSV.write(joinpath(outdir, "Generator_cf_roofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), pvmodcf_roofpv_sched)
+CSV.write(joinpath(outdir, "Generator_cf_roofpv_pvinv-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), pvinvcf_roofpv_sched)
 
 # # For assumed ISP already derated
 # julia> 1-minimum(pvmodcf_largepv_sched[:, :value]) * 100
