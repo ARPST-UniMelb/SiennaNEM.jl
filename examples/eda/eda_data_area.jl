@@ -17,9 +17,9 @@ SiennaNEM.add_id_area_col!(data["generator"], bus_to_area)
 SiennaNEM.add_area_df!(data)
 
 """
-    add_area_data_col!(
+    add_data_col_by_id!(
     df, area_df;
-    id_area_col=:id_area,
+    id_col=:id_area,
     area_name_col=:area_name,
     area_df_id=:id_area,
     area_df_name=:name,
@@ -31,19 +31,19 @@ and using `area_df[area_df_name]` as the label.
 - Requires `df` to already have `id_area_col`.
 - Throws if an `id_area` in `df` is not present in `area_df`.
 """
-function add_area_data_col!(
+function add_data_col_by_id!(
     df, map;
-    id_area_col::Symbol=:id_area,
+    id_col::Symbol=:id_area,
     data_col::Symbol=:area_name,
 )
     # NOTE: area_to_name is a constant from SiennaNEM.const
-    df[!, data_col] = [map[id] for id in df[!, id_area_col]]
+    df[!, data_col] = [map[id] for id in df[!, id_col]]
 end
 
-add_area_data_col!(data["bus"], SiennaNEM.area_to_name; data_col=:area_name)
-add_area_data_col!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
-add_area_data_col!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
-add_area_data_col!(data["bus"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
+add_data_col_by_id!(data["bus"], SiennaNEM.area_to_name; data_col=:area_name)
+add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
+add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 
 data["bus"]
 # 12×11 DataFrame
@@ -66,9 +66,9 @@ data["bus"]
 # NOTE: We can see that for all buses, tref_peak_demand >= tref_summer >= tref_winter.
 # We can use this as boundary in deciding line thermal derating in different seasons.
 
-add_area_data_col!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
-add_area_data_col!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
-add_area_data_col!(data["area"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
+add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
+add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 data["area"]
 # 5×8 DataFrame
 #  Row │ id_area  name    peak_active_power  peak_reactive_power  max_pmax  tref_peak_demand  tref_summer  tref_winter 
@@ -85,8 +85,8 @@ data["area"]
 #   2. rvcap is reverse power flow capacity
 SiennaNEM.add_id_area_col!(data["line"], bus_to_area; bus_col=:id_bus_from, area_col=:id_area_from)
 SiennaNEM.add_id_area_col!(data["line"], bus_to_area; bus_col=:id_bus_to, area_col=:id_area_to)
-add_area_data_col!(data["line"], SiennaNEM.area_to_name; id_area_col=:id_area_from, data_col=:area_from)
-add_area_data_col!(data["line"], SiennaNEM.area_to_name; id_area_col=:id_area_to, data_col=:area_to)
+add_data_col_by_id!(data["line"], SiennaNEM.area_to_name; id_col=:id_area_from, data_col=:area_from)
+add_data_col_by_id!(data["line"], SiennaNEM.area_to_name; id_col=:id_area_to, data_col=:area_to)
 transform!(
     data["line"],
     :id_lin => ByRow(id -> get(line_to_rvcap_summer, id, NaN)) => :rvcap_summer,
@@ -845,9 +845,9 @@ generator_ta_df = CSV.read(joinpath(temerature_dir, generator_temperature_file_n
 generator_ta_df
 
 # Add area data to generator DataFrame for temperature-based derating and analysis
-add_area_data_col!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
-add_area_data_col!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
-add_area_data_col!(data["generator"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
+add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
+add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 
 # Wind turbine temperature capacity correction factor (CF) (per-unit), piecewise-flat
 """
@@ -913,10 +913,12 @@ function get_wind_thermal_correction_factor(
 )
     # Missing-safe scalar kernel
     @inline function _wind_cf_scalar(t2m_c, tower_base_alt_masl)::Float64
-        (ismissing(t2m_c) || ismissing(tower_base_alt_masl)) && return NaN
+        ismissing(t2m_c) && return 1.0
 
         t2m = Float64(t2m_c)
-        isfinite(t2m) || return NaN
+        isfinite(t2m) || return 1.0
+
+        ismissing(tower_base_alt_masl) && return NaN
 
         t = t2m + Float64(t2m_to_ambient_shift_c)
 
@@ -1037,11 +1039,11 @@ function get_inverter_thermal_correction_factor(
     ΔT = T_cut - T_start
 
     @inline function _inv_cf_scalar(t2m_c)::Float64
-        ismissing(t2m_c) && return NaN
+        ismissing(t2m_c) && return 1.0
         ΔT > 0.0 || return NaN
 
         t2m = Float64(t2m_c)
-        isfinite(t2m) || return NaN
+        isfinite(t2m) || return 1.0
 
         T_amb = t2m + Float64(t2m_to_ambient_shift_c)
 
@@ -1106,11 +1108,11 @@ function get_pv_module_temperature_correction_factor_conservative(
     denom = Float64(U0) + Float64(U1) * Float64(v_wind_ms)
 
     @inline function _pv_mod_cf_scalar(t2m_c)::Float64
-        ismissing(t2m_c) && return NaN
+        ismissing(t2m_c) && return 1.0
         denom > 0.0 || return NaN
 
         t2m = Float64(t2m_c)
-        isfinite(t2m) || return NaN
+        isfinite(t2m) || return 1.0
 
         T_amb = t2m + Float64(t2m_to_ambient_shift_c)
         T_cell = T_amb + Float64(G_poa_wm2) / denom
@@ -1201,11 +1203,12 @@ function get_pv_module_temperature_correction_factor_nonconservative(
     denom = Float64(U0) + Float64(U1) * Float64(v_wind_ms)
 
     @inline function _cf_mod_rel_scalar(t2m_c, tref_c)::Float64
-        (ismissing(t2m_c) || ismissing(tref_c)) && return NaN
+        ismissing(t2m_c) && return 1.0
+        ismissing(tref_c) && return NaN
         denom > 0.0 || return NaN
 
         t2m = Float64(t2m_c)
-        isfinite(t2m) || return NaN
+        isfinite(t2m) || return 1.0
 
         T_ref = Float64(tref_c)
         isfinite(T_ref) || return NaN
