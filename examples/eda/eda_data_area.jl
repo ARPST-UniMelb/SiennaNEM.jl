@@ -731,8 +731,8 @@ mkpath(outdir)
 # Line temperature data
 temerature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
 line_temperature_file_name = "Line_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
-ta_df = CSV.read(joinpath(temerature_dir, line_temperature_file_name), DataFrame)
-ta_df
+line_ta_df = CSV.read(joinpath(temerature_dir, line_temperature_file_name), DataFrame)
+line_ta_df
 # 9072×5 DataFrame
 #   Row │ id     id_lin  scenario  date                 value   
 #       │ Int64  Int64   Int64     String31             Float64 
@@ -761,11 +761,11 @@ ta_df
 #                                              9052 rows omitted
 
 # id_target = 13  # check Murraylink line temperature data
-# ta_df[ta_df.id_lin .== id_target, :]
-# maximum(ta_df[ta_df.id_lin .== id_target, :].value)
+# line_ta_df[line_ta_df.id_lin .== id_target, :]
+# maximum(line_ta_df[line_ta_df.id_lin .== id_target, :].value)
 
 fwcap_sched = get_branch_thermal_capacity(
-    ta_df, data["line"],
+    line_ta_df, data["line"],
     (:tref_summer, :tref_peak_demand,
      :fwcap_summer, :fwcap_peak_demand,
      :tm2_fwcap, :tm3_fwcap);
@@ -801,7 +801,7 @@ fwcap_sched
 #                                               9052 rows omitted
 
 rvcap_sched = get_branch_thermal_capacity(
-    ta_df, data["line"],
+    line_ta_df, data["line"],
     (:tref_summer, :tref_peak_demand,
      :rvcap_summer, :rvcap_peak_demand,
      :tm2_rvcap, :tm3_rvcap);
@@ -841,8 +841,8 @@ rvcap_sched
 temerature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
 generator_temperature_file_name = "Generator_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
 
-ta_df = CSV.read(joinpath(temerature_dir, generator_temperature_file_name), DataFrame)
-ta_df
+generator_ta_df = CSV.read(joinpath(temerature_dir, generator_temperature_file_name), DataFrame)
+generator_ta_df
 
 # Add area data to generator DataFrame for temperature-based derating and analysis
 add_area_data_col!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
@@ -976,7 +976,7 @@ wind_tech_values = ("Wind",)
 gen_wind_df = filter(:tech => t -> !ismissing(t) && (t in wind_tech_values), data["generator"])
 
 wind_id_gens = Set(gen_wind_df[!, :id_gen])
-ta_wind_df = filter(:id_gen => idg -> idg in wind_id_gens, ta_df)
+ta_wind_df = filter(:id_gen => idg -> idg in wind_id_gens, generator_ta_df)
 
 windcf_sched = get_wind_thermal_correction_factor(
     ta_wind_df, gen_wind_df;
@@ -1242,7 +1242,7 @@ largepv_tech_values = ("LargePV",)
 gen_largepv_df = filter(:tech => t -> !ismissing(t) && (t in largepv_tech_values), data["generator"])
 
 largepv_id_gens = Set(gen_largepv_df[!, :id_gen])
-ta_largepv_df = filter(:id_gen => idg -> idg in largepv_id_gens, ta_df)
+ta_largepv_df = filter(:id_gen => idg -> idg in largepv_id_gens, generator_ta_df)
 
 pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_nonconservative(
     ta_largepv_df, gen_largepv_df;
@@ -1263,7 +1263,7 @@ roofpv_tech_values = ("RoofPV",)
 gen_roofpv_df = filter(:tech => t -> !ismissing(t) && (t in roofpv_tech_values), data["generator"])
 
 roofpv_id_gens = Set(gen_roofpv_df[!, :id_gen])
-ta_roofpv_df = filter(:id_gen => idg -> idg in roofpv_id_gens, ta_df)
+ta_roofpv_df = filter(:id_gen => idg -> idg in roofpv_id_gens, generator_ta_df)
 
 pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_nonconservative(
     ta_roofpv_df, gen_roofpv_df;

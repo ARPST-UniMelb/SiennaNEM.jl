@@ -2,6 +2,7 @@ using DataFrames
 using Plots
 using Dates
 
+## Plot similar to dataset style, not time vs capacity
 tas = 0.0:0.5:50.0
 
 line_df =
@@ -50,10 +51,10 @@ function df_to_series(cap_df, line_df, tas)
     series
 end
 
-ta_df = make_ta_grid(line_df, tas)
+ta_range_df = make_ta_grid(line_df, tas)
 
 fwcap_sched_df = get_branch_thermal_capacity(
-    ta_df, line_df,
+    ta_range_df, line_df,
     (:tref_summer, :tref_peak_demand,
      :fwcap_summer, :fwcap_peak_demand,
      :tm2_fwcap, :tm3_fwcap);
@@ -61,7 +62,7 @@ fwcap_sched_df = get_branch_thermal_capacity(
 )
 
 rvcap_sched_df = get_branch_thermal_capacity(
-    ta_df, line_df,
+    ta_range_df, line_df,
     (:tref_summer, :tref_peak_demand,
      :fwcap_summer, :fwcap_peak_demand,
      :tm2_fwcap, :tm3_fwcap);
