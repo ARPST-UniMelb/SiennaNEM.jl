@@ -62,7 +62,6 @@ rez_windcf_sched = get_wind_thermal_correction_factor(
     gen_id_col=:id_rez_mesh,
     altitude_col=nothing,
 )
-# CSV.write(joinpath(outdir, "Generator_cf_rezwind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_windcf_sched)
 rez_windcf_sched
 
 # Aggregate by bus, unweighted mean across mesh points
@@ -76,7 +75,6 @@ rez_windcf_bus_mean = combine(
     :value => mean => :cf_mean,
     nrow => :n_mesh
 )
-CSV.write(joinpath(outdir, "Generator_cf_aggregate_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_windcf_bus_mean)
 
 ## LargePV
 rez_pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_nonconservative(
@@ -84,7 +82,6 @@ rez_pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_nonconse
     gen_id_col=:id_rez_mesh,
     U0=25.0, U1=6.84,
 )
-# CSV.write(joinpath(outdir, "Generator_cf_rezlargepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_pvmodcf_largepv_sched)
 rez_pvmodcf_largepv_sched
 
 # Aggregate by bus, unweighted mean across mesh points
@@ -98,7 +95,6 @@ rez_pvmodcf_largepv_bus_mean = combine(
     :value => mean => :cf_mean,
     nrow => :n_mesh
 )
-CSV.write(joinpath(outdir, "Generator_cf_aggregate_largepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_pvmodcf_largepv_bus_mean)
 
 ## RooftopPV
 rooftop_pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_nonconservative(
@@ -106,7 +102,6 @@ rooftop_pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_nonco
     gen_id_col=:id_rooftop_mesh,
     U0=25.0, U1=6.84,
 )
-# CSV.write(joinpath(outdir, "Generator_cf_meshroofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rooftop_pvmodcf_roofpv_sched)
 rooftop_pvmodcf_roofpv_sched
 
 # Aggregate by bus, unweighted mean across mesh points
@@ -120,4 +115,62 @@ rooftop_pvmodcf_roofpv_bus_mean = combine(
     :value => mean => :cf_mean,
     nrow => :n_mesh
 )
-CSV.write(joinpath(outdir, "Generator_cf_aggregate_roofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rooftop_pvmodcf_roofpv_bus_mean)
+
+## Aggregate output formatting
+using DataFrames
+using CSV
+using Statistics
+
+# --- helpers to format aggregate output like: id, id_gen, scenario, date, value ---
+# id_gen is looked up from `data["generator"]` using (type, id_bus).
+function _bus_to_idgen_map(generator_df::DataFrame, gen_type::AbstractString)
+    sub = generator_df[generator_df.type .== gen_type, [:id_bus, :id_gen]]
+    @assert nrow(sub) > 0 "No generators found with type == $(repr(gen_type))."
+    return Dict(row.id_bus => row.id_gen for row in eachrow(sub))
+end
+
+function _format_aggregate_for_csv(cf_bus_mean::DataFrame, bus_to_idgen::Dict{Int,Int}; drop_missing_idgen::Bool=true)
+    out = select(cf_bus_mean, :scenario, :date, :id_bus, :cf_mean)
+    rename!(out, :cf_mean => :value)
+
+    # Map id_bus -> id_gen, but allow buses with no generator of this type
+    out.id_gen = get.(Ref(bus_to_idgen), out.id_bus, missing)
+
+    if drop_missing_idgen
+        filter!(row -> !ismissing(row.id_gen), out)
+    end
+
+    # ensure Int columns (and match requested format)
+    out.id_gen = Int.(out.id_gen)
+    out.id = out.id_gen
+    out = select(out, :id, :id_gen, :scenario, :date, :value)
+    sort!(out, [:scenario, :id_gen, :date])
+    return out
+end
+
+## Wind
+wind_bus_to_idgen = _bus_to_idgen_map(data["generator"], "Wind")
+rez_windcf_out = _format_aggregate_for_csv(rez_windcf_bus_mean, wind_bus_to_idgen)
+
+CSV.write(
+    joinpath(outdir, "Generator_cf_aggregate_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
+    rez_windcf_out
+)
+
+## LargePV
+largepv_bus_to_idgen = _bus_to_idgen_map(data["generator"], "LargePV")
+rez_largepv_out = _format_aggregate_for_csv(rez_pvmodcf_largepv_bus_mean, largepv_bus_to_idgen)
+
+CSV.write(
+    joinpath(outdir, "Generator_cf_aggregate_largepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
+    rez_largepv_out
+)
+
+## RoofPV
+roofpv_bus_to_idgen = _bus_to_idgen_map(data["generator"], "RoofPV")
+roofpv_out = _format_aggregate_for_csv(rooftop_pvmodcf_roofpv_bus_mean, roofpv_bus_to_idgen)
+
+CSV.write(
+    joinpath(outdir, "Generator_cf_aggregate_roofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
+    roofpv_out
+)
