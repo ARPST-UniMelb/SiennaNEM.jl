@@ -458,7 +458,7 @@ transform!(
         ByRow((a, b) -> min(Float64(a), Float64(b))) => :tref_winter,
 )
 
-# New lines without any data of summer and winter flow should be derated based on their
+# New ac_oh lines without any data of summer and winter flow should be derated based on their
 # (default) line reference temperature.
 cols_missing_ratings = [:fwcap_summer, :fwcap_peak_demand, :rvcap_summer, :rvcap_peak_demand]
 mask_no_seasonal_data =
@@ -497,6 +497,32 @@ show(filter(:investment => ==(false), filter(:active => ==(true), data["line"]))
 #   13 │     13  Murraylink             VIC        SA                   41.0         32.0          8.0   46.0      46.0      46.0       46.0         46.0      46.0
 #   14 │     14  Basslink               TAS        VIC                   7.7          7.7          1.2  NaN       NaN       NaN        NaN          NaN       NaN
 #   15 │     15  Project EnergyConnect  NSW        SA                   20.0         20.0         20.0   90.0      90.0      90.0       90.0         90.0      90.0
+
+# TODO: what is the best logic for new dc_ug lines?
+
+# New other lines without any data of summer and winter flow should be derated based on their
+# (default) line capacity
+cols_missing_ratings = [:fwcap_summer, :fwcap_peak_demand, :rvcap_summer, :rvcap_peak_demand]
+mask_no_seasonal_data =
+    reduce(.&, (.!isfinite.(data["line"][!, c]) for c in cols_missing_ratings))
+data["line"][mask_no_seasonal_data, :fwcap_summer] .= data["line"][mask_no_seasonal_data, :fwcap]
+data["line"][mask_no_seasonal_data, :fwcap_peak_demand] .= data["line"][mask_no_seasonal_data, :fwcap]
+data["line"][mask_no_seasonal_data, :rvcap_summer] .= data["line"][mask_no_seasonal_data, :rvcap]
+data["line"][mask_no_seasonal_data, :rvcap_peak_demand] .= data["line"][mask_no_seasonal_data, :rvcap]
+
+# # print for debugging dc_ss lines
+# ids = [14, 50, 51]
+# show(
+#     filter(:id_lin => in(ids), data["line"])[:, [
+#         :id_lin, :name, :alias, :tech,
+#         :tref_winter, :tref_summer, :tref_peak_demand,
+#         :fwcap, :fwcap_summer, :fwcap_peak_demand,
+#         :rvcap, :rvcap_summer, :rvcap_peak_demand,
+#         :tm1_fwcap, :tm2_fwcap, :tm3_fwcap,
+#         :tm1_rvcap, :tm2_rvcap, :tm3_rvcap,
+#     ]],
+#     allrows=true, allcols=true
+# )
 
 """
     get_branch_thermal_capacity_ac_oh(
