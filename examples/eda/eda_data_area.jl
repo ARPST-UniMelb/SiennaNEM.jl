@@ -41,7 +41,7 @@ function add_data_col_by_id!(
 end
 
 add_data_col_by_id!(data["bus"], SiennaNEM.area_to_name; data_col=:area_name)
-add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_peak_demand; data_col=:tref_peak_demand)
 add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
 add_data_col_by_id!(data["bus"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 
@@ -66,7 +66,7 @@ data["bus"]
 # NOTE: We can see that for all buses, tref_peak_demand >= tref_summer >= tref_winter.
 # We can use this as boundary in deciding line thermal derating in different seasons.
 
-add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_peak_demand; data_col=:tref_peak_demand)
 add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
 add_data_col_by_id!(data["area"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 data["area"]
@@ -871,7 +871,7 @@ generator_ta_df = CSV.read(joinpath(temerature_dir, generator_temperature_file_n
 generator_ta_df
 
 # Add area data to generator DataFrame for temperature-based derating and analysis
-add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_peak_demand; data_col=:tref_peak_demand)
 add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
 add_data_col_by_id!(data["generator"], SiennaNEM.area_to_tref_winter; data_col=:tref_winter)
 
@@ -1218,7 +1218,7 @@ function get_pv_module_temperature_correction_factor_nonconservative(
     gen_df::DataFrame;
     id_col::Symbol = :id,
     gen_id_col::Symbol = :id_gen,
-    tref_col::Symbol = :tref_peak_demand,
+    tref_col::Symbol = :tref_summer,
     t2m_to_ambient_shift_c::Real = 0.0,
     beta::Real = -0.0036,
     G_poa_wm2::Real = 1000.0,  # TODO: consider use actual solar irradiance, support historical and future solar.

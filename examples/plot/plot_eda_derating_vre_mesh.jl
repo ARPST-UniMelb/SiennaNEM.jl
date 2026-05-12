@@ -134,7 +134,7 @@ windcf_low_trace = scatter(
 )
 
 layout = Layout(
-    title = "REZ wind CF — meshes + REZ means (bus $(id_bus_sel): $(bus_name))",
+    title = "REZ Wind CF — meshes + REZ means (bus $(id_bus_sel): $(bus_name))",
     xaxis = attr(title = "Date"),
     yaxis = attr(title = "CF (p.u.)"),
     width = 1100,
@@ -164,15 +164,6 @@ using DataFrames
 using Statistics
 using PlotlyJS
 import PlotlyJS: scatter, Layout, Plot, attr
-
-# This file assumes these are already defined in the session (from eda_data_read_vre.jl):
-#   rez_pvmodcf_largepv_sched       # mesh-level CF (id_rez_mesh)
-#   rez_pvmodcf_largepv_bus         # mesh-level CF joined with id_bus + id_rez + rez_name
-#   rez_pvmodcf_largepv_bus_mean    # aggregated mean per (scenario,date,id_bus,id_rez)
-#
-# Columns expected:
-#   rez_pvmodcf_largepv_bus: :scenario, :date, :value, :id_rez_mesh, :id_bus, :bus_name, :id_rez, :rez_name
-#   rez_pvmodcf_largepv_bus_mean: :scenario, :date, :id_bus, :bus_name, :id_rez, :rez_name, :cf_mean, :n_mesh
 
 # --- choose one bus ---
 id_bus_sel = 1  # NQ
@@ -299,7 +290,7 @@ overall_mean_trace = scatter(
 )
 
 layout = Layout(
-    title = "LargePV module CF — meshes + REZ means (bus $(id_bus_sel): $(bus_name))",
+    title = "REZ PV module CF — meshes + REZ means (bus $(id_bus_sel): $(bus_name))",
     xaxis = attr(title = "Date"),
     yaxis = attr(title = "CF (p.u.)"),
     width = 1100,

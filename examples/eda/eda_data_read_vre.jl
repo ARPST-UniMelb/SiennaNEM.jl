@@ -14,15 +14,15 @@ add_data_col_by_id!(data["rooftop_mesh"], bus_to_name; id_col=:id_bus, data_col=
 SiennaNEM.add_id_area_col!(data["rez_mesh"], bus_to_area)
 SiennaNEM.add_id_area_col!(data["rooftop_mesh"], bus_to_area)
 
-# add tref_peak_demand to rooftop_mesh and rez_mesh data for later use in solar derating factor calculation
-add_data_col_by_id!(data["rez_mesh"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
-add_data_col_by_id!(data["rooftop_mesh"], SiennaNEM.area_to_tref_summer; data_col=:tref_peak_demand)
+# add tref_summer to rooftop_mesh and rez_mesh data for later use in solar derating factor calculation
+add_data_col_by_id!(data["rez_mesh"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
+add_data_col_by_id!(data["rooftop_mesh"], SiennaNEM.area_to_tref_summer; data_col=:tref_summer)
 
-temerature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
+temperature_dir = joinpath(@__DIR__, "../..", "data/weather/temperature")
 rez_temperature_file_name = "REZ_mesh_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
-rez_ta_df = CSV.read(joinpath(temerature_dir, rez_temperature_file_name), DataFrame)
+rez_ta_df = CSV.read(joinpath(temperature_dir, rez_temperature_file_name), DataFrame)
 rooftop_temperature_file_name = "Rooftop_mesh_2m_temperature-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"
-rooftop_ta_df = CSV.read(joinpath(temerature_dir, rooftop_temperature_file_name), DataFrame)
+rooftop_ta_df = CSV.read(joinpath(temperature_dir, rooftop_temperature_file_name), DataFrame)
 
 count(ismissing, Matrix(rez_ta_df))
 count(ismissing, Matrix(rooftop_ta_df))
@@ -56,7 +56,7 @@ bus_mesh_counts
 #   11 │     11         180              19
 #   12 │     12          53              20
 
-
+## Wind
 rez_windcf_sched = get_wind_thermal_correction_factor(
     rez_ta_df, data["rez_mesh"];
     gen_id_col=:id_rez_mesh,
@@ -78,7 +78,7 @@ rez_windcf_bus_mean = combine(
 )
 CSV.write(joinpath(outdir, "Generator_cf_aggregate_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_windcf_bus_mean)
 
-
+## LargePV
 rez_pvmodcf_largepv_sched = get_pv_module_temperature_correction_factor_nonconservative(
     rez_ta_df, data["rez_mesh"];
     gen_id_col=:id_rez_mesh,
@@ -99,3 +99,25 @@ rez_pvmodcf_largepv_bus_mean = combine(
     nrow => :n_mesh
 )
 CSV.write(joinpath(outdir, "Generator_cf_aggregate_largepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_pvmodcf_largepv_bus_mean)
+
+## RooftopPV
+rooftop_pvmodcf_roofpv_sched = get_pv_module_temperature_correction_factor_nonconservative(
+    rooftop_ta_df, data["rooftop_mesh"];
+    gen_id_col=:id_rooftop_mesh,
+    U0=25.0, U1=6.84,
+)
+# CSV.write(joinpath(outdir, "Generator_cf_meshroofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rooftop_pvmodcf_roofpv_sched)
+rooftop_pvmodcf_roofpv_sched
+
+# Aggregate by bus, unweighted mean across mesh points
+rooftop_pvmodcf_roofpv_bus = leftjoin(
+    rooftop_pvmodcf_roofpv_sched,
+    select(data["rooftop_mesh"], :id_rooftop_mesh, :id_bus, :bus_name);
+    on = :id_rooftop_mesh
+)
+rooftop_pvmodcf_roofpv_bus_mean = combine(
+    groupby(rooftop_pvmodcf_roofpv_bus, [:scenario, :date, :id_bus, :bus_name]),
+    :value => mean => :cf_mean,
+    nrow => :n_mesh
+)
+CSV.write(joinpath(outdir, "Generator_cf_aggregate_roofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rooftop_pvmodcf_roofpv_bus_mean)
