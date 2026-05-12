@@ -1,5 +1,6 @@
 using DataFrames
 using CSV
+using Statistics
 
 vre_dir = joinpath(@__DIR__, "../../", "data", "out-ref4006-poe10", "csv")
 rez_mesh_file_name = "rez_mesh.csv"
@@ -48,3 +49,25 @@ bus_mesh_counts
 #   10 │     10          71              16
 #   11 │     11         180              19
 #   12 │     12          53              20
+
+
+rez_windcf_sched = get_wind_thermal_correction_factor(
+    rez_ta_df, data["rez_mesh"];
+    gen_id_col=:id_rez_mesh,
+    altitude_col=nothing,
+)
+# CSV.write(joinpath(outdir, "Generator_cf_rezwind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), windcf_sched)
+rez_windcf_sched
+
+# Aggregate by bus, unweighted mean across mesh points
+rez_windcf_bus = leftjoin(
+    rez_windcf_sched,
+    select(data["rez_mesh"], :id_rez_mesh, :id_bus, :bus_name, :id_rez, :rez_name);
+    on = :id_rez_mesh
+)
+rez_windcf_bus_mean = combine(
+    groupby(rez_windcf_bus, [:scenario, :date, :id_bus, :bus_name, :id_rez, :rez_name]),
+    :value => mean => :cf_mean,
+    nrow => :n_mesh
+)
+CSV.write(joinpath(outdir, "Generator_cf_aggregate_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"), rez_windcf_bus_mean)
