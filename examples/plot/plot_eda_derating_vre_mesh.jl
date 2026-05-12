@@ -5,7 +5,8 @@ using PlotlyJS
 import PlotlyJS: scatter, Layout, Plot, attr
 
 # --- choose one bus ---
-id_bus_sel = 8
+id_bus_sel = 1  # NQ
+# id_bus_sel = 8  # SNSW
 
 # --- prep: parse datetime ---
 df_bus = filter(:id_bus => ==(id_bus_sel), rez_windcf_bus)
@@ -199,6 +200,33 @@ overall_mean_trace = scatter(
     hovertemplate = "bus mean<br>%{x}<br>cf=%{y:.3f}<extra></extra>",
 )
 
+# OPTIONAL 2: low-spatial-granularity (1 profile per bus)
+windcf_low = copy(windcf_sched)
+windcf_low[!, :datetime] = DateTime.(windcf_low[!, :date], dateformat"yyyy-mm-dd HH:MM:SS")
+
+# add id_bus onto wind CF rows
+windcf_low = leftjoin(
+    windcf_low,
+    select(data["generator"], :id_gen, :id_bus);
+    on = :id_gen
+)
+
+# keep same scenario + bus + window
+scenario_sel = 1  # set to match your plot
+windcf_low = filter(:scenario => ==(scenario_sel), windcf_low)
+windcf_low = filter(:id_bus => ==(id_bus_sel), windcf_low)
+windcf_low = filter(:datetime => d -> dt_start <= d <= dt_end, windcf_low)
+sort!(windcf_low, :datetime)
+
+windcf_low_trace = scatter(
+    x = windcf_low.datetime,
+    y = windcf_low.value,
+    mode = "lines",
+    name = "low-granularity CF (bus profile)",
+    line = attr(color = "rgba(90,90,90,0.95)", width = 3, dash = "dash"),
+    hovertemplate = "low-gran CF<br>%{x}<br>cf=%{y:.3f}<extra></extra>",
+)
+
 layout = Layout(
     title = "REZ wind CF — meshes + REZ means (bus $(id_bus_sel): $(bus_name))",
     xaxis = attr(title = "Date"),
@@ -210,7 +238,7 @@ layout = Layout(
     annotations = [
         attr(
             x = 0.01, y = 0.99, xref = "paper", yref = "paper",
-            xanchor = "left", yanchor = "bottom",
+            xanchor = "left", yanchor = "top",
             text = "bus $(id_bus_sel): $(bus_name)",
             showarrow = false,
             font = attr(size = 12, color = "black"),
@@ -221,5 +249,5 @@ layout = Layout(
     ],
 )
 
-plt = Plot([mesh_traces...; mean_rez_traces...; overall_mean_trace], layout)
+plt = Plot([mesh_traces...; mean_rez_traces...; overall_mean_trace; windcf_low_trace], layout)
 plt
