@@ -6,14 +6,40 @@ using Statistics
 using PlotlyJS
 import PlotlyJS: scatter, Layout, Plot, attr
 
+# --- choose one bus ---
+id_bus_sel = 1  # NQ
+scenario_sel = 1
+
+# --- time window ---
+dt_start = DateTime("2038-01-23 00:00:00", dateformat"yyyy-mm-dd HH:MM:SS")
+dt_end   = DateTime("2038-01-25 00:00:00", dateformat"yyyy-mm-dd HH:MM:SS")
+
+# df_bus name is reserved for data["bus"] elsewhere; use df_bus_vre here.
+df_bus_vre = filter(:scenario => ==(scenario_sel), rez_windcf_bus)
+df_bus_vre = filter(:id_bus => ==(id_bus_sel), df_bus_vre)
+
+df_bus_vre[!, :datetime] = DateTime.(df_bus_vre[!, :date], dateformat"yyyy-mm-dd HH:MM:SS")
+df_bus_vre = filter(:datetime => d -> dt_start <= d <= dt_end, df_bus_vre)
+sort!(df_bus_vre, [:id_rez, :id_rez_mesh, :datetime])
+
+# --- bus label (handles empty + missing) ---
+bus_name = let
+    if nrow(df_bus_vre) == 0
+        "bus $(id_bus_sel)"
+    else
+        nm = collect(skipmissing(df_bus_vre.bus_name))
+        isempty(nm) ? "bus $(id_bus_sel)" : first(nm)
+    end
+end
+
 # --- compute mean per timestamp ---
 # overall mean (across all meshes at the bus)
-df_mean = combine(groupby(df_bus, [:scenario, :datetime]), :value => mean => :cf_mean)
+df_mean = combine(groupby(df_bus_vre, [:scenario, :datetime]), :value => mean => :cf_mean)
 sort!(df_mean, :datetime)
 
 # NEW: mean per REZ (across meshes in that REZ) at the bus
 df_mean_rez = combine(
-    groupby(df_bus, [:scenario, :datetime, :id_rez, :rez_name]),
+    groupby(df_bus_vre, [:scenario, :datetime, :id_rez, :rez_name]),
     :value => mean => :cf_mean_rez
 )
 sort!(df_mean_rez, [:id_rez, :datetime])
@@ -34,7 +60,7 @@ palette_rgb = [
 ]
 rgba(rgb::NTuple{3,Int}, a::Real) = "rgba($(rgb[1]),$(rgb[2]),$(rgb[3]),$(Float64(a)))"
 
-rez_keys = unique(select(df_bus, :id_rez, :rez_name))
+rez_keys = unique(select(df_bus_vre, :id_rez, :rez_name))
 sort!(rez_keys, :id_rez)
 
 rez_to_rgb = Dict{Int, NTuple{3,Int}}()
@@ -57,9 +83,9 @@ for r in eachrow(rez_keys)
     mesh_color = rgba(base_rgb, mesh_alpha)
 
     # plot each mesh line (transparent) for this REZ
-    mesh_ids_rez = unique(df_bus.id_rez_mesh[df_bus.id_rez .== id_rez])
+    mesh_ids_rez = unique(df_bus_vre.id_rez_mesh[df_bus_vre.id_rez .== id_rez])
     for mid in mesh_ids_rez
-        sub = view(df_bus, (df_bus.id_rez_mesh .== mid) .& (df_bus.id_rez .== id_rez), :)
+        sub = view(df_bus_vre, (df_bus_vre.id_rez_mesh .== mid) .& (df_bus_vre.id_rez .== id_rez), :)
         push!(mesh_traces,
             scatter(
                 x = sub.datetime,
@@ -176,12 +202,12 @@ dt_start = DateTime("2038-01-23 00:00:00", dateformat"yyyy-mm-dd HH:MM:SS")
 dt_end   = DateTime("2038-01-25 00:00:00", dateformat"yyyy-mm-dd HH:MM:SS")
 
 # --- prep: filter + parse datetimes (mesh-level + joined bus metadata) ---
-df_bus = filter(:scenario => ==(scenario_sel), rez_pvmodcf_largepv_bus)
-df_bus = filter(:id_bus => ==(id_bus_sel), df_bus)
+df_bus_vre = filter(:scenario => ==(scenario_sel), rez_pvmodcf_largepv_bus)
+df_bus_vre = filter(:id_bus => ==(id_bus_sel), df_bus_vre)
 
-df_bus[!, :datetime] = DateTime.(df_bus[!, :date], dateformat"yyyy-mm-dd HH:MM:SS")
-df_bus = filter(:datetime => d -> dt_start <= d <= dt_end, df_bus)
-sort!(df_bus, [:id_rez, :id_rez_mesh, :datetime])
+df_bus_vre[!, :datetime] = DateTime.(df_bus_vre[!, :date], dateformat"yyyy-mm-dd HH:MM:SS")
+df_bus_vre = filter(:datetime => d -> dt_start <= d <= dt_end, df_bus_vre)
+sort!(df_bus_vre, [:id_rez, :id_rez_mesh, :datetime])
 
 # --- aggregated REZ mean series (already computed in rez_pvmodcf_largepv_bus_mean) ---
 df_mean_rez = filter(:scenario => ==(scenario_sel), rez_pvmodcf_largepv_bus_mean)
@@ -193,17 +219,17 @@ sort!(df_mean_rez, [:id_rez, :datetime])
 
 # --- bus label (handles empty + missing) ---
 bus_name = let
-    if nrow(df_bus) == 0
+    if nrow(df_bus_vre) == 0
         "bus $(id_bus_sel)"
     else
-        nm = collect(skipmissing(df_bus.bus_name))
+        nm = collect(skipmissing(df_bus_vre.bus_name))
         isempty(nm) ? "bus $(id_bus_sel)" : first(nm)
     end
 end
 
 # --- overall bus mean across all meshes (all REZ combined) ---
 df_mean_bus = combine(
-    groupby(df_bus, [:scenario, :datetime]),
+    groupby(df_bus_vre, [:scenario, :datetime]),
     :value => mean => :cf_mean_bus
 )
 sort!(df_mean_bus, :datetime)
@@ -223,7 +249,7 @@ palette_rgb = [
 ]
 rgba(rgb::NTuple{3,Int}, a::Real) = "rgba($(rgb[1]),$(rgb[2]),$(rgb[3]),$(Float64(a)))"
 
-rez_keys = unique(select(df_bus, :id_rez, :rez_name))
+rez_keys = unique(select(df_bus_vre, :id_rez, :rez_name))
 sort!(rez_keys, :id_rez)
 
 rez_to_rgb = Dict{Int, NTuple{3,Int}}()
@@ -246,9 +272,9 @@ for r in eachrow(rez_keys)
 
     mesh_color = rgba(base_rgb, mesh_alpha)
 
-    mesh_ids_rez = unique(df_bus.id_rez_mesh[df_bus.id_rez .== id_rez])
+    mesh_ids_rez = unique(df_bus_vre.id_rez_mesh[df_bus_vre.id_rez .== id_rez])
     for mid in mesh_ids_rez
-        sub = view(df_bus, (df_bus.id_rez .== id_rez) .& (df_bus.id_rez_mesh .== mid), :)
+        sub = view(df_bus_vre, (df_bus_vre.id_rez .== id_rez) .& (df_bus_vre.id_rez_mesh .== mid), :)
         push!(mesh_traces,
             scatter(
                 x = sub.datetime,
