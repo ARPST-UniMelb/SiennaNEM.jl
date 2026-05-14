@@ -126,31 +126,39 @@ using Statistics
 function _bus_to_idgen_map(generator_df::DataFrame, gen_type::AbstractString)
     sub = generator_df[generator_df.type .== gen_type, [:id_bus, :id_gen]]
     @assert nrow(sub) > 0 "No generators found with type == $(repr(gen_type))."
-    return Dict(row.id_bus => row.id_gen for row in eachrow(sub))
+    return Dict(Int(row.id_bus) => Int(row.id_gen) for row in eachrow(sub))
 end
 
-function _format_aggregate_for_csv(cf_bus_mean::DataFrame, bus_to_idgen::Dict{Int,Int}; drop_missing_idgen::Bool=true)
-    out = select(cf_bus_mean, :scenario, :date, :id_bus, :cf_mean)
-    rename!(out, :cf_mean => :value)
+# Collapse to true bus-level first (important for REZ meshes: buses span multiple REZs)
+function _format_aggregate_for_csv(
+    cf_bus_mean::DataFrame,
+    bus_to_idgen::Dict{Int,Int};
+    drop_missing_idgen::Bool=true,
+)
+    # 1) collapse any extra grouping (e.g. id_rez/rez_name) down to bus
+    bus_level = combine(
+        groupby(cf_bus_mean, [:scenario, :date, :id_bus]),
+        :cf_mean => mean => :value,
+    )
 
-    # Map id_bus -> id_gen, but allow buses with no generator of this type
-    out.id_gen = get.(Ref(bus_to_idgen), out.id_bus, missing)
+    # 2) map bus -> id_gen (allow missing then drop)
+    bus_level.id_gen = get.(Ref(bus_to_idgen), Int.(bus_level.id_bus), missing)
 
     if drop_missing_idgen
-        filter!(row -> !ismissing(row.id_gen), out)
+        filter!(row -> !ismissing(row.id_gen), bus_level)
     end
 
-    # ensure Int columns (and match requested format)
-    out.id_gen = Int.(out.id_gen)
-    out.id = out.id_gen
-    out = select(out, :id, :id_gen, :scenario, :date, :value)
+    # 3) final formatting
+    bus_level.id_gen = Int.(bus_level.id_gen)
+    bus_level.id = bus_level.id_gen
+    out = select(bus_level, :id, :id_gen, :scenario, :date, :value)
     sort!(out, [:scenario, :id_gen, :date])
     return out
 end
 
 ## Wind
 wind_bus_to_idgen = _bus_to_idgen_map(data["generator"], "Wind")
-rez_windcf_out = _format_aggregate_for_csv(rez_windcf_bus_mean, wind_bus_to_idgen)
+rez_windcf_out = _format_aggregate_for_csv(rez_windcf_bus_mean, wind_bus_to_idgen; drop_missing_idgen=true)
 
 CSV.write(
     joinpath(outdir, "Generator_cf_aggregate_wind-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
@@ -159,7 +167,7 @@ CSV.write(
 
 ## LargePV
 largepv_bus_to_idgen = _bus_to_idgen_map(data["generator"], "LargePV")
-rez_largepv_out = _format_aggregate_for_csv(rez_pvmodcf_largepv_bus_mean, largepv_bus_to_idgen)
+rez_largepv_out = _format_aggregate_for_csv(rez_pvmodcf_largepv_bus_mean, largepv_bus_to_idgen; drop_missing_idgen=true)
 
 CSV.write(
     joinpath(outdir, "Generator_cf_aggregate_largepv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
@@ -168,9 +176,63 @@ CSV.write(
 
 ## RoofPV
 roofpv_bus_to_idgen = _bus_to_idgen_map(data["generator"], "RoofPV")
-roofpv_out = _format_aggregate_for_csv(rooftop_pvmodcf_roofpv_bus_mean, roofpv_bus_to_idgen)
+roofpv_out = _format_aggregate_for_csv(rooftop_pvmodcf_roofpv_bus_mean, roofpv_bus_to_idgen; drop_missing_idgen=true)
 
 CSV.write(
     joinpath(outdir, "Generator_cf_aggregate_roofpv_pvmod-method$(method_number)-$(date_start)_$(date_end)-era5shape$(era5_date)_$(window_name)_AEST_sched_.csv"),
     roofpv_out
 )
+
+# To check if duplicates still exist or not:
+# # no filepath: run in REPL
+# function check_out(df, label)
+#     println("\n== ", label, " ==")
+#     println("cols: ", names(df))
+#     println("nrow: ", nrow(df))
+
+#     cols = propertynames(df)  # Symbols
+
+#     # required columns
+#     @assert all(c -> c in cols, (:id, :id_gen, :scenario, :date, :value))
+
+#     # no missings (since you dropped)
+#     @assert count(ismissing, df.id_gen) == 0
+#     @assert count(ismissing, df.value) == 0
+
+#     # uniqueness of timeseries index
+#     dup = combine(groupby(df, [:scenario, :id_gen, :date]), nrow => :n)
+#     dup = filter(:n => >(1), dup)
+#     println("duplicate (scenario,id_gen,date) groups: ", nrow(dup))
+#     if nrow(dup) > 0
+#         show(first(dup, min(10, nrow(dup)))); println()
+#     end
+
+#     println("value min/max: ", extrema(df.value))
+#     return nothing
+# end
+
+# check_out(rez_windcf_out, "wind aggregate out")
+# check_out(rez_largepv_out, "largepv aggregate out")
+# check_out(roofpv_out, "roofpv aggregate out")
+
+# To check that our data from PISP actually only has 1 VRE for each type at each bus:
+# # no filepath: run in REPL
+# using DataFrames
+
+# function check_one_vre_gen_per_bus(gen_type::String)
+#     sub = data["generator"][data["generator"].type .== gen_type, [:id_bus, :id_gen]]
+#     perbus = combine(groupby(sub, :id_bus), nrow => :n)
+#     bad = filter(:n => >(1), perbus)
+#     println(gen_type, ": buses=", nrow(perbus), " bad_buses(n>1)=", nrow(bad))
+#     if nrow(bad) > 0
+#         show(bad, allrows=true, allcols=true); println()
+#         # show the actual duplicated rows
+#         ids = Set(bad.id_bus)
+#         show(filter(:id_bus => in(ids), sub), allrows=true, allcols=true); println()
+#     end
+#     return nothing
+# end
+
+# check_one_vre_gen_per_bus("Wind")
+# check_one_vre_gen_per_bus("LargePV")
+# check_one_vre_gen_per_bus("RoofPV")
