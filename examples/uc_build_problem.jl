@@ -39,7 +39,8 @@ system_data_dir = joinpath(
     @__DIR__, "../..", "NEM-reliability-suite", "data", "pisp-datasets",
     "out-ref$reference_trace-poe$poe", file_format
 )
-ts_data_dir = joinpath(system_data_dir, "schedule-$tyear")
+schedule_name = "schedule-$tyear"
+ts_data_dir = joinpath(system_data_dir, schedule_name)
 
 scenario = 1
 horizon = Hour(12)
