@@ -42,8 +42,8 @@ system_data_dir = joinpath(
 ts_data_dir = joinpath(system_data_dir, "schedule-$tyear")
 
 scenario = 1
-horizon = Hour(48)
-interval = Hour(24)
+horizon = Hour(12)
+interval = Hour(6)
 
 # data and system
 data = SiennaNEM.get_data(system_data_dir, ts_data_dir)
