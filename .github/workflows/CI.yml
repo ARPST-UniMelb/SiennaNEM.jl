@@ -33,11 +33,11 @@ jobs:
           - x64
     steps:
       # Checkout the main repo
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Checkout NEM reliability suite to a subdirectory
       - name: Checkout NEM reliability suite
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ARPST-UniMelb/NEM-reliability-suite
           path: NEM-reliability-suite
